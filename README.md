@@ -66,9 +66,10 @@ To figure out the cause, we provide utilities that ease debugging.
 - `edu.kit.kastel.vads.compiler.parser.Printer` allows printing the AST.
   As it inserts many parentheses, it can be helpful when debugging precedence problems.
 - `edu.kit.kastel.vads.compiler.ir.util.GraphVizPrinter` can generate output in
-  the DOT format. There are online tools (e.g., the relatively powerful
-  <https://www.yworks.com/yed-live/> or the more barebones
-  <https://magjac.com/graphviz-visual-editor/>) that can visualize that output.
+  the DOT format. There are online tools (e.g.,
+  <https://magjac.com/graphviz-visual-editor/>, which can display tooltips and
+  subgraphs, or https://www.yworks.com/yed-live/, which is relatively good at
+  neighbourhoods and larger layouts) that can visualize that output.
   It allows debugging anything related to the IR.
 
 We also try to keep track of source positions as much as possible through the compiler.
