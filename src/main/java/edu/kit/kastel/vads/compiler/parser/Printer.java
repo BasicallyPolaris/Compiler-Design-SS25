@@ -79,7 +79,7 @@ public class Printer {
                 printTree(rhs);
                 print(")");
             }
-            case LiteralTree(var value, _) -> this.builder.append(value);
+            case LiteralTree(var value, _, _) -> this.builder.append(value);
             case NegateTree(var expression, _) -> {
                 print("-(");
                 printTree(expression);

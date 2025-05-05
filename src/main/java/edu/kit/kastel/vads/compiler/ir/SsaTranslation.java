@@ -167,7 +167,7 @@ public class SsaTranslation {
         @Override
         public Optional<Node> visit(LiteralTree literalTree, SsaTranslation data) {
             pushSpan(literalTree);
-            Node node = data.constructor.newConstInt((int) literalTree.value());
+            Node node = data.constructor.newConstInt((int) literalTree.parseValue().orElseThrow());
             popSpan();
             return Optional.of(node);
         }
