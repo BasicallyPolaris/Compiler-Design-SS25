@@ -32,7 +32,7 @@ public class Main {
             new SemanticAnalysis(program).analyze();
         } catch (SemanticException e) {
             e.printStackTrace();
-            System.exit(2);
+            System.exit(7);
             return;
         }
         List<IrGraph> graphs = new ArrayList<>();
@@ -54,7 +54,7 @@ public class Main {
             return parser.parseProgram();
         } catch (ParseException e) {
             e.printStackTrace();
-            System.exit(1);
+            System.exit(42);
             throw new AssertionError("unreachable");
         }
     }
