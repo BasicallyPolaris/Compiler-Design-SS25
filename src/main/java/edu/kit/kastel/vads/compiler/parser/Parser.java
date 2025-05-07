@@ -40,7 +40,11 @@ public class Parser {
     }
 
     public ProgramTree parseProgram() {
-        return new ProgramTree(List.of(parseFunction()));
+        ProgramTree programTree = new ProgramTree(List.of(parseFunction()));
+        if (this.tokenSource.hasMore()) {
+            throw new ParseException("expected end of input but got " + this.tokenSource.peek());
+        }
+        return programTree;
     }
 
     private FunctionTree parseFunction() {
