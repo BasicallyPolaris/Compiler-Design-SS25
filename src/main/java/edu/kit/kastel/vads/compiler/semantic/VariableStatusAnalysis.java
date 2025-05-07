@@ -45,8 +45,15 @@ class VariableStatusAnalysis implements NoOpVisitor<Namespace<VariableStatusAnal
         }
     }
 
+    private static void checkUndeclared(NameTree name, @Nullable VariableStatus status) {
+        if (status != null) {
+            throw new SemanticException("Variable " + name + " is already declared");
+        }
+    }
+
     @Override
     public Unit visit(DeclarationTree declarationTree, Namespace<VariableStatus> data) {
+        checkUndeclared(declarationTree.name(), data.get(declarationTree.name()));
         VariableStatus status = declarationTree.initializer() == null
             ? VariableStatus.DECLARED
             : VariableStatus.INITIALIZED;
