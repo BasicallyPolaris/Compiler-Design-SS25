@@ -71,9 +71,47 @@ To figure out the cause, we provide utilities that ease debugging.
   subgraphs, or https://www.yworks.com/yed-live/, which is relatively good at
   neighbourhoods and larger layouts) that can visualize that output.
   It allows debugging anything related to the IR.
+- `edu.kit.kastel.vads.compiler.ir.util.YCompPrinter` can generate output for [yComp](https://pp.ipd.kit.edu/firm/yComp.html).
+  This tool is more sophisticated than GraphViz. See below for further information.
 
 We also try to keep track of source positions as much as possible through the compiler.
 You can get rid of all that, but it can be helpful to track down where something comes from.
+
+### yComp
+
+To use yComp, you need to patch the provided start script to make it work with modern Java versions.
+You can copy-paste the following script:
+```sh
+#!/bin/sh
+set -e
+
+YCOMP="$0"
+while [ -L "$YCOMP" ]; do
+    LINK="$(readlink "$YCOMP")"
+    case "$LINK" in
+        /*) YCOMP="$LINK";;
+        *)  YCOMP="${YCOMP%/*}/$LINK";;
+    esac
+done
+
+# 1.5.0_22, 1.8, 9, 11.0.2...
+# We only match on the first field
+JAVA_VERSION="$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)"
+
+ADDITIONAL_ARGUMENTS=""
+
+if [ "$JAVA_VERSION" -gt 9 ]; then
+    echo "Java 9+ detected, opening potentially required packages"
+    ADDITIONAL_ARGUMENTS='--add-opens java.desktop/sun.swing=ALL-UNNAMED'
+fi
+
+echo "Commandline is: 'java -Xmx512m $ADDITIONAL_ARGUMENTS -jar "${YCOMP%/*}/yComp.jar" "$@"'"
+java -Xmx512m $ADDITIONAL_ARGUMENTS -jar "${YCOMP%/*}/yComp.jar" "$@"
+```
+
+You can directly dump graphs by setting the `DUMP_GRAPHS` environment variable to `vcg` or by passing `-DdumpGraphs=vcg`
+to the compiler as a JVM argument (not as a program argument!).
+The graphs will be dumped to the `graphs` directory relative to the output file.
 
 ## Miscellaneous
 
