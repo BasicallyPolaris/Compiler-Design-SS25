@@ -1,5 +1,6 @@
 package edu.kit.kastel.vads.compiler.semantic;
 
+import edu.kit.kastel.vads.compiler.lexer.Operator;
 import edu.kit.kastel.vads.compiler.parser.ast.AssignmentTree;
 import edu.kit.kastel.vads.compiler.parser.ast.DeclarationTree;
 import edu.kit.kastel.vads.compiler.parser.ast.IdentExpressionTree;
@@ -23,7 +24,11 @@ class VariableStatusAnalysis implements NoOpVisitor<Namespace<VariableStatusAnal
         switch (assignmentTree.lValue()) {
             case LValueIdentTree(var name) -> {
                 VariableStatus status = data.get(name);
-                checkDeclared(name, status);
+                if (assignmentTree.operator().type() == Operator.OperatorType.ASSIGN) {
+                    checkDeclared(name, status);
+                } else {
+                    checkInitialized(name, status);
+                }
                 if (status != VariableStatus.INITIALIZED) {
                     // only update when needed, reassignment is totally fine
                     updateStatus(data, VariableStatus.INITIALIZED, name);
