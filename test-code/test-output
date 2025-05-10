@@ -1,0 +1,8 @@
+function main {
+  %0 = const 20
+  %1 = const 3
+  %2 = const 5
+  %3 = mul %1 %2
+  %4 = sub %0 %3
+  ret %4
+}

@@ -30,6 +30,7 @@ public class LivenessAnalyzer {
         this.lineCount = 0;
         this.livenessLines = new ArrayList<>();
         fillLivenessInformation();
+        // TODO: Remove debugging output
         livenessLines.forEach(livenessLine -> {
             System.out.println(livenessLine.toString());
         });
@@ -37,13 +38,29 @@ public class LivenessAnalyzer {
 
     private void fillLivenessInformation() {
         Set<Node> visited = new HashSet<>();
-        scan(irGraph.endBlock(), visited);
+        generateLivenessLines(irGraph.endBlock(), visited);
+        fillLivenessLines();
     }
 
-    private void scan(Node node, Set<Node> visited) {
+    private void fillLivenessLines() {
+        List<LivenessLine> initialLivenessLines = List.copyOf(livenessLines);
+        livenessLines.forEach(l -> {
+            switch (l.operation) {
+                case BINARY_OP -> {
+                    // All used parameters are live in the line
+                    l.liveInVariables.addAll(l.parameters);
+                }
+                case ASSIGN -> {
+
+                }
+            }
+        })
+    }
+
+    private void generateLivenessLines(Node node, Set<Node> visited) {
         for (Node predecessor : node.predecessors()) {
             if (visited.add(predecessor)) {
-                scan(predecessor, visited);
+                generateLivenessLines(predecessor, visited);
             }
         }
 

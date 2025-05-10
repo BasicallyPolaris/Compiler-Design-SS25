@@ -16,12 +16,10 @@ public final class AssignmentLivenessLine extends LivenessLine {
 
     @Override
     public String toString() {
-        String params = parameters.stream()
-                .map(Register::toString)
-                .collect(Collectors.joining(", "));
+        String params = parameters.stream().map(Register::toString).collect(Collectors.joining(", "));
         if (params.isEmpty()) {
             return lineNumber + ": " + target + " = " + operation;
         }
-        return lineNumber + ": " + target + " = " + operation + "(" + params + ")";
+        return lineNumber + ": " + target + " = " + operation + "(" + params + ")" + (liveInVariables.isEmpty() ?  "" : (" - " + liveInVariables.stream().map(Register::toString).collect(Collectors.joining(", "))));
     }
 }
