@@ -86,6 +86,9 @@ public class Lexer {
                         } else if (peek(1) == '*') {
                             currentCommentType = CommentType.MULTI_LINE;
                             multiLineCommentDepth++;
+                        } else if (currentCommentType == CommentType.MULTI_LINE) {
+                            this.pos++;
+                            continue;
                         } else {
                             return null;
                         }
