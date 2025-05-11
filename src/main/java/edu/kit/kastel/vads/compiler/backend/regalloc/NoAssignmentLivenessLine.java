@@ -1,6 +1,9 @@
 package edu.kit.kastel.vads.compiler.backend.regalloc;
 
+import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
+
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class NoAssignmentLivenessLine extends LivenessLine {
@@ -9,7 +12,10 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
         this.lineNumber = lineNumber;
         this.operation = operation;
         this.parameters = parameters;
-        this.liveInVariables = List.of();
+        this.liveInVariables = Set.of();
+
+        // TODO: not elegant solution, maybe refactor
+        this.target =  new VirtualRegister(-1);
     }
 
     @Override

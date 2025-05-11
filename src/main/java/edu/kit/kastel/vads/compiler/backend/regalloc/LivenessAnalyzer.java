@@ -23,6 +23,7 @@ public class LivenessAnalyzer {
     private Map<Node, Register> registers;
     List<LivenessLine> livenessLines;
     private int lineCount;
+    private Set<LivenessPredicate> livenessPredicates;
 
     public LivenessAnalyzer(IrGraph graph, Map<Node, Register> registers) {
         this.irGraph = graph;
@@ -33,6 +34,105 @@ public class LivenessAnalyzer {
         livenessLines.forEach(livenessLine -> {
             System.out.println(livenessLine.toString());
         });
+        this.livenessPredicates = new HashSet<>();
+    }
+
+    public void calculateLiveness() {
+        //Step 1: Use J-Rules Exhaustively
+        generatePredicates();
+        //Step 2: Use K Rules exhaustively on the generated predicates to fill livenessline live-in information
+        generateLivenessPredicates();
+        //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
+        useLivenessPredicates();
+    }
+
+    private void generatePredicates() {
+        int predicatesCount = 0;
+        Boolean stillChanging = true;
+        PredicateGenerator predicateGenerator = new PredicateGenerator();
+
+        while (stillChanging) {
+            //Linecount is number of lines + 1 so no strict less
+            for (int k = 0; k <= lineCount; k++ ) {
+                LivenessLine currentLine = livenessLines.get(k);
+                switch (currentLine.operation) {
+                    //Rule J1
+                    case Operation.BINARY_OP -> {
+                        livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
+                        livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
+                        livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getLast()));
+                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                    }
+                    //Rule J2
+                    case  Operation.RETURN -> {
+                        livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
+                    }
+                    //Rule J3
+                    case Operation.ASSIGN -> {
+                        livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
+                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                    }
+                    //Rule J4
+                    case Operation.GOTO -> {
+                        //TODO: Liveness Line needs second line number for jump targets that are used here for the succ predicate
+                    }
+                    //Rule J5
+                    case Operation.CONDITIONAL_GOTO -> {
+                        livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
+                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                        //TODO: Same as above, succ predicate for the jump target
+                    }
+                }
+            }
+            //If no predicates are added after iterating all lines, stop looking for predicates
+            if (predicatesCount == livenessPredicates.size()) {
+                stillChanging = false;
+            }
+            //Else we set the new predicatescount for the next run
+            else {
+                predicatesCount = livenessPredicates.size();
+            }
+        }
+    }
+
+    private void generateLivenessPredicates() {
+        int predicatesCount = livenessPredicates.size();
+        Boolean stillChanging = true;
+        PredicateGenerator predicateGenerator = new PredicateGenerator();
+
+        while (stillChanging) {
+            for (LivenessPredicate predicate : livenessPredicates) {
+                switch (predicate.type) {
+                    //Rule J1
+                    case LivenessPredicateType.USE -> {
+                        livenessPredicates.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
+                    }
+                    case LivenessPredicateType.SUCC -> {
+                        for (LivenessPredicate pred : livenessPredicates) {
+                            if (pred.type == LivenessPredicateType.LIVE && pred.lineNumber == predicate.succLineNumber & !(livenessPredicates.contains(predicateGenerator.def(predicate.lineNumber, pred.parameter)))) {
+                                livenessPredicates.add(predicateGenerator.live(predicate.lineNumber, pred.parameter));
+                            }
+                        }
+                    }
+                }
+            }
+            //If no predicates are added after iterating all lines, stop looking for predicates
+            if (predicatesCount == livenessPredicates.size()) {
+                stillChanging = false;
+            }
+            //Else we set the new predicatescount for the next run
+            else {
+                predicatesCount = livenessPredicates.size();
+            }
+        }
+    }
+
+    private void useLivenessPredicates() {
+        for (LivenessPredicate predicate : livenessPredicates) {
+            if (predicate.type == LivenessPredicateType.LIVE) {
+                livenessLines.get(predicate.lineNumber).liveInVariables.add(predicate.parameter);
+            }
+        }
     }
 
     private void fillLivenessInformation() {
