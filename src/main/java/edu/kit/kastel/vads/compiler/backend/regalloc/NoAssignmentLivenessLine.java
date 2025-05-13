@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.backend.regalloc;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,7 +13,7 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
         this.lineNumber = lineNumber;
         this.operation = operation;
         this.parameters = parameters;
-        this.liveInVariables = Set.of();
+        this.liveInVariables = new HashSet<Register>();
 
         // TODO: not elegant solution, maybe refactor
         this.target =  new VirtualRegister(-1);
@@ -23,6 +24,6 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
         String params = parameters.stream()
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
-        return lineNumber + ": " + operation + "(" + params + ")";
+        return lineNumber + ": " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
     }
 }

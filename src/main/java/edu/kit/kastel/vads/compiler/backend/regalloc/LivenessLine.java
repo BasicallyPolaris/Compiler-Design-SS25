@@ -8,7 +8,7 @@ public sealed abstract class LivenessLine permits AssignmentLivenessLine, NoAssi
     protected int lineNumber;
     protected Operation operation;
     protected List<Register> parameters;
-    protected Set<Register> liveInVariables;
+    public Set<Register> liveInVariables;
 
     @Override
     public abstract String toString();

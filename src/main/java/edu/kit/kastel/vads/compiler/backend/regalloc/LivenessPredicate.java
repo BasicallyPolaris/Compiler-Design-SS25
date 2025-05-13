@@ -7,15 +7,20 @@ import java.util.Objects;
 public class LivenessPredicate {
 
     public LivenessPredicateType type;
-    protected int lineNumber;
-    protected Register parameter;
-    protected int succLineNumber;
+    public int lineNumber;
+    public Register parameter;
+    public int succLineNumber;
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         LivenessPredicate that = (LivenessPredicate) o;
         return lineNumber == that.lineNumber && succLineNumber == that.succLineNumber && type == that.type && Objects.equals(parameter, that.parameter);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, lineNumber, parameter, succLineNumber);
     }
 
     //succLineNumber (and parameter) is -1 (or $-1) when not used by predicate

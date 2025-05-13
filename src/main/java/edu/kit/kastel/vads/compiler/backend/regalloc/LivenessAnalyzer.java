@@ -21,7 +21,7 @@ public class LivenessAnalyzer {
     //4. Create Mapping with the temps to their live-in-temps for the interference graph
     private final IrGraph irGraph;
     private Map<Node, Register> registers;
-    List<LivenessLine> livenessLines;
+    public List<LivenessLine> livenessLines;
     private int lineCount;
     private Set<LivenessPredicate> livenessPredicates;
 
@@ -31,9 +31,6 @@ public class LivenessAnalyzer {
         this.lineCount = 0;
         this.livenessLines = new ArrayList<>();
         fillLivenessInformation();
-        livenessLines.forEach(livenessLine -> {
-            System.out.println(livenessLine.toString());
-        });
         this.livenessPredicates = new HashSet<>();
     }
 
@@ -44,16 +41,18 @@ public class LivenessAnalyzer {
         generateLivenessPredicates();
         //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
         useLivenessPredicates();
+        livenessLines.forEach(livenessLine -> {
+            System.out.println(livenessLine.toString());
+        });
     }
 
     private void generatePredicates() {
         int predicatesCount = 0;
-        Boolean stillChanging = true;
+        boolean stillChanging = true;
         PredicateGenerator predicateGenerator = new PredicateGenerator();
 
         while (stillChanging) {
-            //Linecount is number of lines + 1 so no strict less
-            for (int k = 0; k <= lineCount; k++ ) {
+            for (int k = 0; k < livenessLines.size(); k++ ) {
                 LivenessLine currentLine = livenessLines.get(k);
                 switch (currentLine.operation) {
                     //Rule J1
@@ -97,25 +96,30 @@ public class LivenessAnalyzer {
 
     private void generateLivenessPredicates() {
         int predicatesCount = livenessPredicates.size();
-        Boolean stillChanging = true;
+        boolean stillChanging = true;
         PredicateGenerator predicateGenerator = new PredicateGenerator();
 
         while (stillChanging) {
+            Set<LivenessPredicate> livenessPredicates2 = new HashSet<>();
             for (LivenessPredicate predicate : livenessPredicates) {
                 switch (predicate.type) {
                     //Rule J1
                     case LivenessPredicateType.USE -> {
-                        livenessPredicates.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
+                        livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
                     }
                     case LivenessPredicateType.SUCC -> {
                         for (LivenessPredicate pred : livenessPredicates) {
                             if (pred.type == LivenessPredicateType.LIVE && pred.lineNumber == predicate.succLineNumber & !(livenessPredicates.contains(predicateGenerator.def(predicate.lineNumber, pred.parameter)))) {
-                                livenessPredicates.add(predicateGenerator.live(predicate.lineNumber, pred.parameter));
+                                livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, pred.parameter));
                             }
                         }
                     }
+                    case LivenessPredicateType.DEF, LivenessPredicateType.LIVE -> {}
                 }
             }
+            //Add new Predicates to predicates set
+            livenessPredicates.addAll(livenessPredicates2);
+
             //If no predicates are added after iterating all lines, stop looking for predicates
             if (predicatesCount == livenessPredicates.size()) {
                 stillChanging = false;

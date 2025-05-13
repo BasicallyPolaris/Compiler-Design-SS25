@@ -1,5 +1,6 @@
 package edu.kit.kastel.vads.compiler.backend.aasm;
 
+import edu.kit.kastel.vads.compiler.backend.regalloc.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.AddNode;
@@ -30,6 +31,8 @@ public class CodeGenerator {
         for (IrGraph graph : program) {
             AasmRegisterAllocator allocator = new AasmRegisterAllocator();
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
+            LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
+            analyzer.calculateLiveness();
             builder.append("function ")
                 .append(graph.name())
                 .append(" {\n");
