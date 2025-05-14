@@ -9,4 +9,6 @@ public interface Register {
 
     @Override
     public int hashCode();
+
+    public boolean isValid();
 }

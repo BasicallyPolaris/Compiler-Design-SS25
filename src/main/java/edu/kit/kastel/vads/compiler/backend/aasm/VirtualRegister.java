@@ -22,4 +22,9 @@ public record VirtualRegister(int id) implements Register {
     public int hashCode() {
         return Objects.hashCode(id());
     }
+
+    @Override
+    public boolean isValid() {
+        return this.id >= 0;
+    }
 }
