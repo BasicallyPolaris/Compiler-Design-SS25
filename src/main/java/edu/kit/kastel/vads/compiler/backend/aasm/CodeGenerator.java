@@ -33,11 +33,15 @@ public class CodeGenerator {
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
             analyzer.calculateLiveness();
-            builder.append("function ")
-                .append(graph.name())
-                .append(" {\n");
+            builder.append(".global main\n")
+                    .append(".global _main\n")
+                    .append(".text\n\n");
+            builder.append("main:\n")
+                    .append("call _main\n")
+                    .append("movq %rax, %rdi\n").append("movq %0x3C, %rax\n")
+                    .append("syscall\n\n")
+                    .append("_main:\n");
             generateForGraph(graph, builder, registers);
-            builder.append("}");
         }
         return builder.toString();
     }
@@ -55,17 +59,18 @@ public class CodeGenerator {
         }
 
         switch (node) {
-            case AddNode add -> binary(builder, registers, add, "add");
-            case SubNode sub -> binary(builder, registers, sub, "sub");
-            case MulNode mul -> binary(builder, registers, mul, "mul");
-            case DivNode div -> binary(builder, registers, div, "div");
-            case ModNode mod -> binary(builder, registers, mod, "mod");
+            case AddNode add -> binary(builder, registers, add);
+            case SubNode sub -> binary(builder, registers, sub);
+            case MulNode mul -> binary(builder, registers, mul);
+            case DivNode div -> binary(builder, registers, div);
+            case ModNode mod -> binary(builder, registers, mod);
             case ReturnNode r -> builder.repeat(" ", 2).append("ret ")
-                .append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)));
+                    .append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)));
             case ConstIntNode c -> builder.repeat(" ", 2)
-                .append(registers.get(c))
-                .append(" = const ")
-                .append(c.value());
+                    .append("movl $")
+                    .append(c.value())
+                    .append(", ")
+                    .append(registers.get(c));
             case Phi _ -> throw new UnsupportedOperationException("phi");
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
@@ -76,17 +81,61 @@ public class CodeGenerator {
     }
 
     private static void binary(
-        StringBuilder builder,
-        Map<Node, Register> registers,
-        BinaryOperationNode node,
-        String opcode
+            StringBuilder builder,
+            Map<Node, Register> registers,
+            BinaryOperationNode node
     ) {
-        builder.repeat(" ", 2).append(registers.get(node))
-            .append(" = ")
-            .append(opcode)
-            .append(" ")
-            .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
-            .append(" ")
-            .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)));
+        builder.repeat(" ", 2).append("movl ")
+                .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                .append(",")
+                .append(registers.get(node))
+                .append("\n");
+        switch (node) {
+            case AddNode add -> builder.repeat(" ", 2).append("addl ")
+                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(", ")
+                    .append(registers.get(node));
+            case SubNode sub -> builder.repeat(" ", 2).append("subl ")
+                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(", ")
+                    .append(registers.get(node));
+            case MulNode mul -> builder.repeat(" ", 2).append("imull ")
+                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(", ")
+                    .append(registers.get(node));
+            case DivNode div -> {
+                // First, clear EDX
+                builder.repeat(" ", 2).append("xorl %edx, %edx\n");
+                // Move the left operand to EAX
+                builder.repeat(" ", 2).append("movl ")
+                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                        .append(", %eax\n");
+                builder.append("cltd");
+                // Perform the division
+                builder.repeat(" ", 2).append("idivl ")
+                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                        .append("\n");
+                // Move the result from EAX to the destination register
+                builder.repeat(" ", 2).append("movl %eax, ")
+                        .append(registers.get(node));
+            }
+            case ModNode mod -> {
+                // First, clear EDX
+                builder.repeat(" ", 2).append("xorl %edx, %edx\n");
+                // Move the left operand to EAX
+                builder.repeat(" ", 2).append("movl ")
+                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                        .append(", %eax\n");
+                // Perform the division
+                builder.repeat(" ", 2).append("idivl ")
+                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                        .append("\n");
+                // Move the remainder from EDX to the destination register
+                builder.repeat(" ", 2).append("movl %edx, ")
+                        .append(registers.get(node));
+            }
+            default ->
+                    throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
+        }
     }
 }

@@ -53,7 +53,7 @@ public class TestMain {
         // TODO: generate assembly and invoke gcc instead of generating abstract assembly
         String s = new CodeGenerator().generateCode(graphs);
 
-        System.out.println("Input: " + inputString + "\n\nOutput: " + s);
+        System.out.println("\n----- Input: -----\n" + inputString + "\n\n---- Output: -----\n" + s);
         //Files.writeString(output, s);
     }
 
