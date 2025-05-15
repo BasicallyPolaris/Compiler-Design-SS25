@@ -41,9 +41,7 @@ public class LivenessAnalyzer {
         generateLivenessPredicates();
         //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
         useLivenessPredicates();
-        livenessLines.forEach(livenessLine -> {
-            System.out.println(livenessLine.toString() + " - TARGET: " + livenessLine.target);
-        });
+
         ActualRegisterAllocator ra = new ActualRegisterAllocator(livenessLines);
     }
 

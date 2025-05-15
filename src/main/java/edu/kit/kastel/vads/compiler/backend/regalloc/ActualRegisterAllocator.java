@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.backend.regalloc;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.color.ChordalGraphColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
@@ -20,14 +21,14 @@ public class ActualRegisterAllocator {
 
     //frier.dich();
 
-    public List<LivenessLine> livenessLines;
-    private SimpleGraph<Register, DefaultEdge> interferenceGraph;
-    private VertexColoringAlgorithm.Coloring<Register> coloring;
+    private final List<LivenessLine> livenessLines;
+    private final SimpleGraph<Register, DefaultEdge> interferenceGraph;
+    private final Map<Register, Integer> coloring;
 
     public ActualRegisterAllocator(List<LivenessLine> livenessLines) {
         this.livenessLines = livenessLines;
         this.interferenceGraph = generateInterferenceGraph(livenessLines);
-        maximumCardinalitySearch();
+        this.coloring = generateGraphColoring();
     }
 
     private SimpleGraph<Register, DefaultEdge> generateInterferenceGraph(List<LivenessLine> livenessLines) {
@@ -73,13 +74,12 @@ public class ActualRegisterAllocator {
         Queue<Register> simplicialEliminationOrdering = new LinkedList<>();
         SimpleGraph<Register, DefaultEdge> graph = generateInterferenceGraph(this.livenessLines);
 
-        Map<Register, Integer> nodeWeights = interferenceGraph.vertexSet().stream().collect(Collectors.toMap(
+        Map<Register, Integer> nodeWeights = graph.vertexSet().stream().collect(Collectors.toMap(
                 register -> register,
                 register -> 0
         ));
 
         //TODO: Insert special registers into Queue , Increment neighboring weights by 1 for each
-
         while (!nodeWeights.isEmpty()) {
             Register maxWeightVertex = pollMaxWeightNode(nodeWeights);
             simplicialEliminationOrdering.add(maxWeightVertex);
@@ -94,4 +94,37 @@ public class ActualRegisterAllocator {
         return simplicialEliminationOrdering;
     }
 
+    private int getValidColorFromNeighborhood(Set<Register> neighbors, Map<Register, Integer> coloring) {
+        Set<Integer> usedColors = new HashSet<>();
+        int maxColor = coloring.size();
+
+        for (Register neighbor : neighbors) {
+            usedColors.add(coloring.get(neighbor));
+        }
+
+        for (int i = 0; i < maxColor; i++) {
+            if (!usedColors.contains(i)) return i;
+        }
+
+        return maxColor;
+    }
+
+    private Map<Register, Integer> generateGraphColoring() {
+        Map<Register, Integer> coloring = interferenceGraph.vertexSet().stream().collect(Collectors.toMap(
+                register -> register,
+                register -> -1 // Assign invalid coloring at start
+        ));
+
+        Queue<Register> simplicialEliminationOrdering = maximumCardinalitySearch();
+
+        while (!simplicialEliminationOrdering.isEmpty()) {
+            Register maxWeightVertex = simplicialEliminationOrdering.poll();
+
+            Set<Register> neighbors = Graphs.neighborSetOf(interferenceGraph, maxWeightVertex);
+            coloring.put(maxWeightVertex, getValidColorFromNeighborhood(neighbors, coloring));
+            System.out.println(maxWeightVertex + " -- COLOR --> " + coloring.get(maxWeightVertex));
+        }
+
+        return coloring;
+    }
 }
