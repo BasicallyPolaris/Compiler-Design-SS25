@@ -12,7 +12,7 @@ public record VirtualRegister(int id) implements Register {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
+        if (getClass() != o.getClass()) return false;
         VirtualRegister that = (VirtualRegister) o;
 
         return id() == that.id();
@@ -23,7 +23,6 @@ public record VirtualRegister(int id) implements Register {
         return Objects.hashCode(id());
     }
 
-    @Override
     public boolean isValid() {
         return this.id >= 0;
     }

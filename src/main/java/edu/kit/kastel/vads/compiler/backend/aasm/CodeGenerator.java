@@ -1,6 +1,8 @@
 package edu.kit.kastel.vads.compiler.backend.aasm;
 
 import edu.kit.kastel.vads.compiler.backend.regalloc.LivenessAnalyzer;
+import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegister;
+import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegisterAllocator;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.AddNode;
@@ -17,10 +19,7 @@ import edu.kit.kastel.vads.compiler.ir.node.ReturnNode;
 import edu.kit.kastel.vads.compiler.ir.node.StartNode;
 import edu.kit.kastel.vads.compiler.ir.node.SubNode;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
@@ -33,12 +32,22 @@ public class CodeGenerator {
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
             analyzer.calculateLiveness();
+            PhysicalRegisterAllocator pAllocator = new PhysicalRegisterAllocator(analyzer.livenessLines);
+            Map<Register, PhysicalRegister> physicalRegisters = pAllocator.allocate();
+
+            Map<Node, Register> physicalRegisterMap = new HashMap<>();
+            registers.forEach((node, register) -> {
+                PhysicalRegister physicalReg = physicalRegisters.get(register);
+                physicalRegisterMap.put(node, physicalReg != null ? physicalReg : register);
+            });
+            registers = physicalRegisterMap;
+
             builder.append(".global main\n")
                     .append(".global _main\n")
                     .append(".text\n\n");
             builder.append("main:\n")
                     .append("call _main\n")
-                    .append("movq %rax, %rdi\n").append("movq %0x3C, %rax\n")
+                    .append("movq %rax, %rdi\n").append("movq $0x3C, %rax\n")
                     .append("syscall\n\n")
                     .append("_main:\n");
             generateForGraph(graph, builder, registers);
@@ -64,8 +73,9 @@ public class CodeGenerator {
             case MulNode mul -> binary(builder, registers, mul);
             case DivNode div -> binary(builder, registers, div);
             case ModNode mod -> binary(builder, registers, mod);
-            case ReturnNode r -> builder.repeat(" ", 2).append("ret ")
-                    .append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)));
+            case ReturnNode r ->
+                    builder.repeat(" ", 2).append("movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT))).append(", %eax")
+                            .append("\n  ").append("ret");
             case ConstIntNode c -> builder.repeat(" ", 2)
                     .append("movl $")
                     .append(c.value())
@@ -87,23 +97,23 @@ public class CodeGenerator {
     ) {
         builder.repeat(" ", 2).append("movl ")
                 .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
-                .append(",")
+                .append(", ")
                 .append(registers.get(node))
                 .append("\n");
         switch (node) {
-            case AddNode add -> builder.repeat(" ", 2).append("addl ")
+            case AddNode _ -> builder.repeat(" ", 2).append("addl ")
                     .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
                     .append(", ")
                     .append(registers.get(node));
-            case SubNode sub -> builder.repeat(" ", 2).append("subl ")
+            case SubNode _ -> builder.repeat(" ", 2).append("subl ")
                     .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
                     .append(", ")
                     .append(registers.get(node));
-            case MulNode mul -> builder.repeat(" ", 2).append("imull ")
+            case MulNode _ -> builder.repeat(" ", 2).append("imull ")
                     .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
                     .append(", ")
                     .append(registers.get(node));
-            case DivNode div -> {
+            case DivNode _ -> {
                 // First, clear EDX
                 builder.repeat(" ", 2).append("xorl %edx, %edx\n");
                 // Move the left operand to EAX
@@ -119,7 +129,7 @@ public class CodeGenerator {
                 builder.repeat(" ", 2).append("movl %eax, ")
                         .append(registers.get(node));
             }
-            case ModNode mod -> {
+            case ModNode _ -> {
                 // First, clear EDX
                 builder.repeat(" ", 2).append("xorl %edx, %edx\n");
                 // Move the left operand to EAX

@@ -20,10 +20,10 @@ public class LivenessAnalyzer {
     //3. Store liveness information in live-in field
     //4. Create Mapping with the temps to their live-in-temps for the interference graph
     private final IrGraph irGraph;
-    private Map<Node, Register> registers;
+    private final Map<Node, Register> registers;
     public List<LivenessLine> livenessLines;
     private int lineCount;
-    private Set<LivenessPredicate> livenessPredicates;
+    private final Set<LivenessPredicate> livenessPredicates;
 
     public LivenessAnalyzer(IrGraph graph, Map<Node, Register> registers) {
         this.irGraph = graph;
@@ -41,8 +41,6 @@ public class LivenessAnalyzer {
         generateLivenessPredicates();
         //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
         useLivenessPredicates();
-
-        ActualRegisterAllocator ra = new ActualRegisterAllocator(livenessLines);
     }
 
     private void generatePredicates() {
@@ -51,7 +49,7 @@ public class LivenessAnalyzer {
         PredicateGenerator predicateGenerator = new PredicateGenerator();
 
         while (stillChanging) {
-            for (int k = 0; k < livenessLines.size(); k++ ) {
+            for (int k = 0; k < livenessLines.size(); k++) {
                 LivenessLine currentLine = livenessLines.get(k);
                 switch (currentLine.operation) {
                     //Rule J1
@@ -59,16 +57,16 @@ public class LivenessAnalyzer {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getLast()));
-                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                        livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     //Rule J2
-                    case  Operation.RETURN -> {
+                    case Operation.RETURN -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                     }
                     //Rule J3
                     case Operation.ASSIGN -> {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
-                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                        livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     //Rule J4
                     case Operation.GOTO -> {
@@ -77,7 +75,7 @@ public class LivenessAnalyzer {
                     //Rule J5
                     case Operation.CONDITIONAL_GOTO -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
-                        livenessPredicates.add(predicateGenerator.succ(k, k+1));
+                        livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                         //TODO: Same as above, succ predicate for the jump target
                     }
                 }
@@ -113,7 +111,8 @@ public class LivenessAnalyzer {
                             }
                         }
                     }
-                    case LivenessPredicateType.DEF, LivenessPredicateType.LIVE -> {}
+                    case LivenessPredicateType.DEF, LivenessPredicateType.LIVE -> {
+                    }
                 }
             }
             //Add new Predicates to predicates set
@@ -176,7 +175,6 @@ public class LivenessAnalyzer {
             case Phi _ -> throw new UnsupportedOperationException("phi");
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
-                return;
             }
         }
     }

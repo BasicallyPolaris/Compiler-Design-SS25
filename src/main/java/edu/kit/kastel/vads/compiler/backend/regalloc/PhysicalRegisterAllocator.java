@@ -1,16 +1,13 @@
 package edu.kit.kastel.vads.compiler.backend.regalloc;
 
-import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 import org.jgrapht.Graphs;
-import org.jgrapht.alg.color.ChordalGraphColoring;
-import org.jgrapht.alg.interfaces.VertexColoringAlgorithm;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ActualRegisterAllocator {
+public class PhysicalRegisterAllocator {
 
     //1. Get the interference Graph from liveness information
     //2. Order nodes using maximum cardinality ordering
@@ -25,10 +22,18 @@ public class ActualRegisterAllocator {
     private final SimpleGraph<Register, DefaultEdge> interferenceGraph;
     private final Map<Register, Integer> coloring;
 
-    public ActualRegisterAllocator(List<LivenessLine> livenessLines) {
+    public PhysicalRegisterAllocator(List<LivenessLine> livenessLines) {
         this.livenessLines = livenessLines;
         this.interferenceGraph = generateInterferenceGraph(livenessLines);
         this.coloring = generateGraphColoring();
+    }
+
+    public Map<Register, PhysicalRegister> allocate() {
+        Map<Register, PhysicalRegister> physicalRegisters = new HashMap<>();
+
+        interferenceGraph.vertexSet().forEach(register -> physicalRegisters.put(register, X86_64PhysicalRegisters.get(coloring.get(register))));
+
+        return physicalRegisters;
     }
 
     private SimpleGraph<Register, DefaultEdge> generateInterferenceGraph(List<LivenessLine> livenessLines) {
@@ -65,6 +70,7 @@ public class ActualRegisterAllocator {
             }
         }
 
+        assert maxWeightRegister != null;
         nodeWeights.remove(maxWeightRegister.getKey());
 
         return maxWeightRegister.getKey();
@@ -76,7 +82,7 @@ public class ActualRegisterAllocator {
 
         Map<Register, Integer> nodeWeights = graph.vertexSet().stream().collect(Collectors.toMap(
                 register -> register,
-                register -> 0
+                _ -> 0
         ));
 
         //TODO: Insert special registers into Queue , Increment neighboring weights by 1 for each
@@ -112,7 +118,7 @@ public class ActualRegisterAllocator {
     private Map<Register, Integer> generateGraphColoring() {
         Map<Register, Integer> coloring = interferenceGraph.vertexSet().stream().collect(Collectors.toMap(
                 register -> register,
-                register -> -1 // Assign invalid coloring at start
+                _ -> -1 // Assign invalid coloring at start
         ));
 
         Queue<Register> simplicialEliminationOrdering = maximumCardinalitySearch();
