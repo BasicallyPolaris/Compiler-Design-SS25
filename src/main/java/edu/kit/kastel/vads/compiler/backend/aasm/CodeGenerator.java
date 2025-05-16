@@ -112,7 +112,7 @@ public class CodeGenerator {
         }
 
         //Move spilled Target in R14 and use R14 as the new second parameter
-        if (spillTarget) {
+        if (spillSource) {
             builder.repeat(" ", 2).append("movl ")
                     .append(secondParameter)
                     .append(", ")
@@ -122,7 +122,7 @@ public class CodeGenerator {
         }
 
         //Move spilled Register in R15 and use R15 as target for binops
-        if (spillSource) {
+        if (spillTarget) {
             builder.repeat(" ", 2).append("movl ")
                     .append(target)
                     .append(", ")
@@ -131,10 +131,6 @@ public class CodeGenerator {
             target = spillRegDest;
         }
 
-        //Is first operand spilled?
-        if (registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)).register == X86_64Register.SPILL) {
-
-        }
 
         builder.repeat(" ", 2).append("movl ")
                 .append(firstParameter)
@@ -190,7 +186,7 @@ public class CodeGenerator {
                     throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
         }
         //Write back from R15 to the Stack
-        if (spillSource) {
+        if (spillTarget) {
             PhysicalRegister targetOnStack = registers.get(node);
             builder.append("\n").repeat(" ", 2).append("movl ")
                     .append(spillRegDest)
@@ -198,7 +194,7 @@ public class CodeGenerator {
                     .append(targetOnStack);
         }
         //Write back from R14 to Stack
-        if (spillTarget) {
+        if (spillSource) {
             PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
             builder.append("\n").repeat(" ", 2).append("movl ")
                     .append(spillRegSource)
