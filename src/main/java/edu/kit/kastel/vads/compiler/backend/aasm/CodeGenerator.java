@@ -192,20 +192,18 @@ public class CodeGenerator {
         //Write back from R15 to the Stack
         if (spillSource) {
             PhysicalRegister targetOnStack = registers.get(node);
-            builder.repeat(" ", 2).append("movl ")
+            builder.append("\n").repeat(" ", 2).append("movl ")
                     .append(spillRegDest)
                     .append(", ")
-                    .append(targetOnStack)
-                    .append("\n");
+                    .append(targetOnStack);
         }
         //Write back from R14 to Stack
         if (spillTarget) {
             PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
-            builder.repeat(" ", 2).append("movl ")
+            builder.append("\n").repeat(" ", 2).append("movl ")
                     .append(spillRegSource)
                     .append(", ")
-                    .append(secondParameterOnStack)
-                    .append("\n");
+                    .append(secondParameterOnStack);
         }
     }
 }
