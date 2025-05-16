@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.backend.aasm.CodeGenerator;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.SsaTranslation;
 import edu.kit.kastel.vads.compiler.ir.optimize.LocalValueNumbering;
+import edu.kit.kastel.vads.compiler.ir.util.GraphVizPrinter;
 import edu.kit.kastel.vads.compiler.lexer.Lexer;
 import edu.kit.kastel.vads.compiler.parser.ParseException;
 import edu.kit.kastel.vads.compiler.parser.Parser;
@@ -32,6 +33,7 @@ public class TestMain {
                 "  int z = t-1;\n" +
                 "  return z;\n" +
                 "}";
+
         //Path input = Path.of(args[0]);
         //Path output = Path.of(args[1]);
         ProgramTree program = lexAndParse(inputString);

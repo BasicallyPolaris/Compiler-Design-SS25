@@ -1,6 +1,7 @@
 package edu.kit.kastel.vads.compiler.backend.aasm;
 
-import edu.kit.kastel.vads.compiler.backend.regalloc.LivenessAnalyzer;
+import edu.kit.kastel.vads.compiler.backend.regalloc.X86_64Register;
+import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegister;
 import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegisterAllocator;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
@@ -35,12 +36,11 @@ public class CodeGenerator {
             PhysicalRegisterAllocator pAllocator = new PhysicalRegisterAllocator(analyzer.livenessLines);
             Map<Register, PhysicalRegister> physicalRegisters = pAllocator.allocate();
 
-            Map<Node, Register> physicalRegisterMap = new HashMap<>();
+            Map<Node, PhysicalRegister> physicalRegisterMap = new HashMap<>();
             registers.forEach((node, register) -> {
                 PhysicalRegister physicalReg = physicalRegisters.get(register);
-                physicalRegisterMap.put(node, physicalReg != null ? physicalReg : register);
+                physicalRegisterMap.put(node, physicalReg);
             });
-            registers = physicalRegisterMap;
 
             builder.append(".global main\n")
                     .append(".global _main\n")
@@ -50,17 +50,17 @@ public class CodeGenerator {
                     .append("movq %rax, %rdi\n").append("movq $0x3C, %rax\n")
                     .append("syscall\n\n")
                     .append("_main:\n");
-            generateForGraph(graph, builder, registers);
+            generateForGraph(graph, builder, physicalRegisterMap);
         }
         return builder.toString();
     }
 
-    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, Register> registers) {
+    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers) {
         Set<Node> visited = new HashSet<>();
         scan(graph.endBlock(), visited, builder, registers);
     }
 
-    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, Register> registers) {
+    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers) {
         for (Node predecessor : node.predecessors()) {
             if (visited.add(predecessor)) {
                 scan(predecessor, visited, builder, registers);
@@ -92,9 +92,14 @@ public class CodeGenerator {
 
     private static void binary(
             StringBuilder builder,
-            Map<Node, Register> registers,
+            Map<Node, PhysicalRegister> registers,
             BinaryOperationNode node
     ) {
+        PhysicalRegister target = registers.get(node);
+        if ( target.register == X86_64Register.SPILL ) {
+
+        }
+
         builder.repeat(" ", 2).append("movl ")
                 .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
                 .append(", ")

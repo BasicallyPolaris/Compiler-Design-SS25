@@ -13,6 +13,7 @@ public class X86_64PhysicalRegisters {
     // Static mapping from X86_64Register enum to PhysicalRegister objects
     private static final Map<X86_64Register, PhysicalRegister> REGISTERS = new HashMap<>();
     private static final List<PhysicalRegister> ACCESSIBLE_REGISTERS = new ArrayList<>();
+    public static final int REG_SIZE_B = 4;
 
     // Initialize the register map with enum values and physical register objects
     static {
@@ -47,7 +48,7 @@ public class X86_64PhysicalRegisters {
             return ACCESSIBLE_REGISTERS.get(index);
         }
 
-        return new PhysicalRegister(index - ACCESSIBLE_REGISTERS.size());
+        return new PhysicalRegister((index - ACCESSIBLE_REGISTERS.size()) * REG_SIZE_B);
     }
 
     public static String getAssemblyName(X86_64Register register) {
@@ -62,7 +63,7 @@ public class X86_64PhysicalRegisters {
      */
     public static String getAssemblyName(X86_64Register register, int stackOffset) {
         if (register == X86_64Register.SPILL && stackOffset >= 0) {
-            return stackOffset + "(" + getAssemblyName(X86_64Register.RSP) + ")";
+            return (stackOffset * REG_SIZE_B) + "(" + getAssemblyName(X86_64Register.RSP) + ")";
         }
 
         return switch (register) {

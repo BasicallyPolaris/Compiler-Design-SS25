@@ -1,5 +1,7 @@
 package edu.kit.kastel.vads.compiler.backend.regalloc;
 
+import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessLine;
+import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.Operation;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
@@ -52,6 +54,10 @@ public class PhysicalRegisterAllocator {
                 for (Register live2 : livenessLine.liveInVariables) {
                     if (!live1.equals(live2)) interferenceGraph.addEdge(live1, live2);
                 }
+            }
+
+            if (livenessLine.operation == Operation.BINARY_OP) {
+                interferenceGraph.addEdge(livenessLine.target, livenessLine.parameters.getLast());
             }
         }
 

@@ -1,6 +1,7 @@
-package edu.kit.kastel.vads.compiler.backend.regalloc;
+package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
+import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 
 public class PredicateGenerator {
 

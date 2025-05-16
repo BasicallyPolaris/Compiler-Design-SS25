@@ -3,8 +3,8 @@ package edu.kit.kastel.vads.compiler.backend.regalloc;
 import java.util.Objects;
 
 public class PhysicalRegister implements Register {
-    X86_64Register register;
-    int stackOffset;
+    public X86_64Register register;
+    public int stackOffset;
 
     public PhysicalRegister(X86_64Register register) {
         this.register = register;

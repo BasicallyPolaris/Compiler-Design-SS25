@@ -13,6 +13,7 @@ import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
 import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
 import edu.kit.kastel.vads.compiler.semantic.SemanticAnalysis;
 import edu.kit.kastel.vads.compiler.semantic.SemanticException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         if (args.length != 2) {
             System.err.println("Invalid arguments: Expected one input file and one output file");
             System.exit(3);
@@ -50,8 +51,20 @@ public class Main {
         }
 
         // TODO: generate assembly and invoke gcc instead of generating abstract assembly
-        String s = new CodeGenerator().generateCode(graphs);
-        Files.writeString(output, s);
+        String assemblyCode = new CodeGenerator().generateCode(graphs);
+        Path assemblyFile = Path.of(output + ".s");
+
+        // Write assembly code to the .s file
+        Files.writeString(assemblyFile, assemblyCode);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "gcc",
+                assemblyFile.toString(),    // Input .s file
+                "-o",
+                output.toString()        // Output executable
+        );
+        Process process = processBuilder.start();
+        process.waitFor();
     }
 
     private static ProgramTree lexAndParse(Path input) throws IOException {
@@ -69,8 +82,8 @@ public class Main {
 
     private static void dumpGraph(IrGraph graph, Path path, String key) throws IOException {
         Files.writeString(
-            path.resolve(graph.name() + "-" + key + ".vcg"),
-            YCompPrinter.print(graph)
+                path.resolve(graph.name() + "-" + key + ".vcg"),
+                YCompPrinter.print(graph)
         );
     }
 }

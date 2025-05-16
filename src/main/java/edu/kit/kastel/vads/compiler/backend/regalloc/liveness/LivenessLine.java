@@ -1,4 +1,6 @@
-package edu.kit.kastel.vads.compiler.backend.regalloc;
+package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
+
+import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 
 import java.util.List;
 import java.util.Set;
@@ -6,8 +8,8 @@ import java.util.Set;
 public sealed abstract class LivenessLine permits AssignmentLivenessLine, NoAssignmentLivenessLine {
     public Register target;
     protected int lineNumber;
-    protected Operation operation;
-    protected List<Register> parameters;
+    public Operation operation;
+    public List<Register> parameters;
     public Set<Register> liveInVariables;
 
     @Override

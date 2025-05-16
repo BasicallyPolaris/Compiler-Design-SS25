@@ -1,10 +1,10 @@
-package edu.kit.kastel.vads.compiler.backend.regalloc;
+package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
+import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class NoAssignmentLivenessLine extends LivenessLine {

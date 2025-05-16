@@ -1,5 +1,6 @@
-package edu.kit.kastel.vads.compiler.backend.regalloc;
+package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
+import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.BinaryOperationNode;
 import edu.kit.kastel.vads.compiler.ir.node.Node;
@@ -148,7 +149,6 @@ public class LivenessAnalyzer {
                 scan(predecessor, visited);
             }
         }
-
         switch (node) {
             case BinaryOperationNode b -> {
                 List<Register> params = new ArrayList<>();
