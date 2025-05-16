@@ -104,11 +104,11 @@ public class CodeGenerator {
         Boolean spillTarget = false;
 
         if ( target.register == X86_64Register.SPILL ) {
-            spillSource = true;
+            spillTarget = true;
         }
 
         if ( secondParameter.register == X86_64Register.SPILL ) {
-            spillTarget = true;
+            spillSource = true;
         }
 
         //Move spilled Target in R14 and use R14 as the new second parameter
@@ -131,6 +131,10 @@ public class CodeGenerator {
             target = spillRegDest;
         }
 
+        //Is first operand spilled?
+        if (registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)).register == X86_64Register.SPILL) {
+
+        }
 
         builder.repeat(" ", 2).append("movl ")
                 .append(firstParameter)
