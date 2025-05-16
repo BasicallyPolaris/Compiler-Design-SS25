@@ -100,8 +100,8 @@ public class CodeGenerator {
         PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
         PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
         PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
-        Boolean spillSource = false;
-        Boolean spillTarget = false;
+        boolean spillSource = false;
+        boolean spillTarget = false;
 
         if ( target.register == X86_64Register.SPILL ) {
             spillTarget = true;
@@ -123,18 +123,14 @@ public class CodeGenerator {
 
         //Move spilled Register in R15 and use R15 as target for binops
         if (spillTarget) {
-            builder.repeat(" ", 2).append("movl ")
-                    .append(target)
-                    .append(", ")
-                    .append(spillRegDest)
-                    .append("\n");
+//            builder.repeat(" ", 2).append("movl ")
+//                    .append(target)
+//                    .append(", ")
+//                    .append(spillRegDest)
+//                    .append("\n");
             target = spillRegDest;
         }
 
-        //Is first operand spilled?
-        if (registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)).register == X86_64Register.SPILL) {
-
-        }
 
         builder.repeat(" ", 2).append("movl ")
                 .append(firstParameter)
@@ -198,12 +194,12 @@ public class CodeGenerator {
                     .append(targetOnStack);
         }
         //Write back from R14 to Stack
-        if (spillSource) {
-            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
-            builder.append("\n").repeat(" ", 2).append("movl ")
-                    .append(spillRegSource)
-                    .append(", ")
-                    .append(secondParameterOnStack);
-        }
+//        if (spillSource) {
+//            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+//            builder.append("\n").repeat(" ", 2).append("movl ")
+//                    .append(spillRegSource)
+//                    .append(", ")
+//                    .append(secondParameterOnStack);
+//        }
     }
 }
