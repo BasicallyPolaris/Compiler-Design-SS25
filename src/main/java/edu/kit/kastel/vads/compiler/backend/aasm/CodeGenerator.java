@@ -125,7 +125,7 @@ public class CodeGenerator {
                 builder.repeat(" ", 2).append("movl ")
                         .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
                         .append(", %eax\n");
-                builder.append("cltd\n");
+                builder.repeat(" ", 2).append("cltd\n");
                 // Perform the division
                 builder.repeat(" ", 2).append("idivl ")
                         .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
@@ -141,6 +141,7 @@ public class CodeGenerator {
                 builder.repeat(" ", 2).append("movl ")
                         .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
                         .append(", %eax\n");
+                builder.repeat(" ", 2).append("cltd\n");
                 // Perform the division
                 builder.repeat(" ", 2).append("idivl ")
                         .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
