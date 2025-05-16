@@ -96,62 +96,116 @@ public class CodeGenerator {
             BinaryOperationNode node
     ) {
         PhysicalRegister target = registers.get(node);
+        PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
+        PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+        PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
+        PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
+        Boolean spillSource = false;
+        Boolean spillTarget = false;
+
         if ( target.register == X86_64Register.SPILL ) {
+            spillSource = true;
+        }
+
+        if ( secondParameter.register == X86_64Register.SPILL ) {
+            spillTarget = true;
+        }
+
+        //Move spilled Target in R14 and use R14 as the new second parameter
+        if (spillTarget) {
+            builder.repeat(" ", 2).append("movl ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(spillRegSource)
+                    .append("\n");
+            secondParameter = spillRegSource;
+        }
+
+        //Move spilled Register in R15 and use R15 as target for binops
+        if (spillSource) {
+            builder.repeat(" ", 2).append("movl ")
+                    .append(target)
+                    .append(", ")
+                    .append(spillRegDest)
+                    .append("\n");
+            target = spillRegDest;
+        }
+
+        //Is first operand spilled?
+        if (registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)).register == X86_64Register.SPILL) {
 
         }
 
         builder.repeat(" ", 2).append("movl ")
-                .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                .append(firstParameter)
                 .append(", ")
-                .append(registers.get(node))
+                .append(target)
                 .append("\n");
         switch (node) {
             case AddNode _ -> builder.repeat(" ", 2).append("addl ")
-                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(secondParameter)
                     .append(", ")
-                    .append(registers.get(node));
+                    .append(target);
             case SubNode _ -> builder.repeat(" ", 2).append("subl ")
-                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(secondParameter)
                     .append(", ")
-                    .append(registers.get(node));
+                    .append(target);
             case MulNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                    .append(secondParameter)
                     .append(", ")
-                    .append(registers.get(node));
+                    .append(target);
             case DivNode _ -> {
                 // First, clear EDX
                 builder.repeat(" ", 2).append("xorl %edx, %edx\n");
                 // Move the left operand to EAX
                 builder.repeat(" ", 2).append("movl ")
-                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                        .append(firstParameter)
                         .append(", %eax\n");
                 builder.repeat(" ", 2).append("cltd\n");
                 // Perform the division
                 builder.repeat(" ", 2).append("idivl ")
-                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                        .append(secondParameter)
                         .append("\n");
                 // Move the result from EAX to the destination register
                 builder.repeat(" ", 2).append("movl %eax, ")
-                        .append(registers.get(node));
+                        .append(target);
             }
             case ModNode _ -> {
                 // First, clear EDX
                 builder.repeat(" ", 2).append("xorl %edx, %edx\n");
                 // Move the left operand to EAX
                 builder.repeat(" ", 2).append("movl ")
-                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT)))
+                        .append(firstParameter)
                         .append(", %eax\n");
                 builder.repeat(" ", 2).append("cltd\n");
                 // Perform the division
                 builder.repeat(" ", 2).append("idivl ")
-                        .append(registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT)))
+                        .append(secondParameter)
                         .append("\n");
                 // Move the remainder from EDX to the destination register
                 builder.repeat(" ", 2).append("movl %edx, ")
-                        .append(registers.get(node));
+                        .append(target);
             }
             default ->
                     throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
+        }
+        //Write back from R15 to the Stack
+        if (spillSource) {
+            PhysicalRegister targetOnStack = registers.get(node);
+            builder.repeat(" ", 2).append("movl ")
+                    .append(spillRegDest)
+                    .append(", ")
+                    .append(targetOnStack)
+                    .append("\n");
+        }
+        //Write back from R14 to Stack
+        if (spillTarget) {
+            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+            builder.repeat(" ", 2).append("movl ")
+                    .append(spillRegSource)
+                    .append(", ")
+                    .append(secondParameterOnStack)
+                    .append("\n");
         }
     }
 }
