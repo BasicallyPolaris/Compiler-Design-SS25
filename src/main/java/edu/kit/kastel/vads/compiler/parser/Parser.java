@@ -53,10 +53,17 @@ public class Parser {
         this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
         BlockTree body = parseBlock();
+
+        // TODO: Only expect at least one function to be naimed main per file ?
+        if (!identifier.value().equals("main")) {
+            System.out.println(identifier.value());
+            throw new ParseException("expected main function but got " + identifier);
+        }
+
         return new FunctionTree(
-            new TypeTree(BasicType.INT, returnType.span()),
-            name(identifier),
-            body
+                new TypeTree(BasicType.INT, returnType.span()),
+                name(identifier),
+                body
         );
     }
 
@@ -135,7 +142,7 @@ public class Parser {
         ExpressionTree lhs = parseTerm();
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
-                && (type == OperatorType.PLUS || type == OperatorType.MINUS)) {
+                    && (type == OperatorType.PLUS || type == OperatorType.MINUS)) {
                 this.tokenSource.consume();
                 lhs = new BinaryOperationTree(lhs, parseTerm(), type);
             } else {
@@ -148,7 +155,7 @@ public class Parser {
         ExpressionTree lhs = parseFactor();
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
-                && (type == OperatorType.MUL || type == OperatorType.DIV || type == OperatorType.MOD)) {
+                    && (type == OperatorType.MUL || type == OperatorType.DIV || type == OperatorType.MOD)) {
                 this.tokenSource.consume();
                 lhs = new BinaryOperationTree(lhs, parseFactor(), type);
             } else {
