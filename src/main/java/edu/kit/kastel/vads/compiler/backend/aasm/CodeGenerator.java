@@ -1,10 +1,7 @@
 package edu.kit.kastel.vads.compiler.backend.aasm;
 
-import edu.kit.kastel.vads.compiler.backend.regalloc.X86_64Register;
+import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
-import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegister;
-import edu.kit.kastel.vads.compiler.backend.regalloc.PhysicalRegisterAllocator;
-import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.AddNode;
 import edu.kit.kastel.vads.compiler.ir.node.BinaryOperationNode;
@@ -21,6 +18,7 @@ import edu.kit.kastel.vads.compiler.ir.node.StartNode;
 import edu.kit.kastel.vads.compiler.ir.node.SubNode;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
@@ -37,10 +35,16 @@ public class CodeGenerator {
             Map<Register, PhysicalRegister> physicalRegisters = pAllocator.allocate();
 
             Map<Node, PhysicalRegister> physicalRegisterMap = new HashMap<>();
+            AtomicInteger spilledRegisters = new AtomicInteger();
             registers.forEach((node, register) -> {
                 PhysicalRegister physicalReg = physicalRegisters.get(register);
                 physicalRegisterMap.put(node, physicalReg);
+                if (physicalReg.register == X86_64Register.SPILL) {
+                    spilledRegisters.getAndIncrement();
+                }
             });
+
+            int spilledRegisterCount = spilledRegisters.get();
 
             builder.append(".global main\n")
                     .append(".global _main\n")
@@ -50,20 +54,28 @@ public class CodeGenerator {
                     .append("movq %rax, %rdi\n").append("movq $0x3C, %rax\n")
                     .append("syscall\n\n")
                     .append("_main:\n");
-            generateForGraph(graph, builder, physicalRegisterMap);
+
+            // Save previous Stackpointer, allocate 4 * spilled register Amount of bytes on the stack
+            if (spilledRegisters.get() > 0) {
+                builder.append("  push %rbp\n")
+                        .append("  mov %rsp, %rbp\n")
+                        .append("  subq $").append((spilledRegisters.get() * 4)).append(", %rsp\n");
+            }
+
+            generateForGraph(graph, builder, physicalRegisterMap, spilledRegisterCount);
         }
         return builder.toString();
     }
 
-    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers) {
+    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
         Set<Node> visited = new HashSet<>();
-        scan(graph.endBlock(), visited, builder, registers);
+        scan(graph.endBlock(), visited, builder, registers, spilledRegisterCount);
     }
 
-    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers) {
+    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
         for (Node predecessor : node.predecessors()) {
             if (visited.add(predecessor)) {
-                scan(predecessor, visited, builder, registers);
+                scan(predecessor, visited, builder, registers, spilledRegisterCount);
             }
         }
 
@@ -73,9 +85,11 @@ public class CodeGenerator {
             case MulNode mul -> binary(builder, registers, mul);
             case DivNode div -> binary(builder, registers, div);
             case ModNode mod -> binary(builder, registers, mod);
-            case ReturnNode r ->
-                    builder.repeat(" ", 2).append("movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT))).append(", %eax")
-                            .append("\n  ").append("ret");
+            case ReturnNode r -> builder
+                    .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT))).append(", %eax\n")
+                    .append("  addq $").append(spilledRegisterCount * 4).append(", %rsp\n")
+                    .append("  pop %rbp\n")
+                    .append("  ret");
             case ConstIntNode c -> builder.repeat(" ", 2)
                     .append("movl $")
                     .append(c.value())
@@ -103,11 +117,11 @@ public class CodeGenerator {
         boolean spillSource = false;
         boolean spillTarget = false;
 
-        if ( target.register == X86_64Register.SPILL ) {
+        if (target.register == X86_64Register.SPILL) {
             spillTarget = true;
         }
 
-        if ( secondParameter.register == X86_64Register.SPILL ) {
+        if (secondParameter.register == X86_64Register.SPILL) {
             spillSource = true;
         }
 
