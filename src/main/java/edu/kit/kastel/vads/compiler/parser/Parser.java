@@ -54,6 +54,7 @@ public class Parser {
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
         BlockTree body = parseBlock();
 
+        // TODO: Only expect at least one function to be naimed main per file ?
         if (!identifier.value().equals("main")) {
             System.out.println(identifier.value());
             throw new ParseException("expected main function but got " + identifier);
