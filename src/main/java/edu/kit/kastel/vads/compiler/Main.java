@@ -50,7 +50,7 @@ public class Main {
             }
         }
 
-        // TODO: generate assembly and invoke gcc instead of generating abstract assembly
+
         String assemblyCode = new CodeGenerator().generateCode(graphs);
         Path assemblyFile = Path.of(output + ".s");
 

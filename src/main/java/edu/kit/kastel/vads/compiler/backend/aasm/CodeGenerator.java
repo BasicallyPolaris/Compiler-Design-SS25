@@ -3,19 +3,7 @@ package edu.kit.kastel.vads.compiler.backend.aasm;
 import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
-import edu.kit.kastel.vads.compiler.ir.node.AddNode;
-import edu.kit.kastel.vads.compiler.ir.node.BinaryOperationNode;
-import edu.kit.kastel.vads.compiler.ir.node.Block;
-import edu.kit.kastel.vads.compiler.ir.node.ConstIntNode;
-import edu.kit.kastel.vads.compiler.ir.node.DivNode;
-import edu.kit.kastel.vads.compiler.ir.node.ModNode;
-import edu.kit.kastel.vads.compiler.ir.node.MulNode;
-import edu.kit.kastel.vads.compiler.ir.node.Node;
-import edu.kit.kastel.vads.compiler.ir.node.Phi;
-import edu.kit.kastel.vads.compiler.ir.node.ProjNode;
-import edu.kit.kastel.vads.compiler.ir.node.ReturnNode;
-import edu.kit.kastel.vads.compiler.ir.node.StartNode;
-import edu.kit.kastel.vads.compiler.ir.node.SubNode;
+import edu.kit.kastel.vads.compiler.ir.node.*;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,6 +73,19 @@ public class CodeGenerator {
             case MulNode mul -> binary(builder, registers, mul);
             case DivNode div -> binary(builder, registers, div);
             case ModNode mod -> binary(builder, registers, mod);
+            case LessNode less -> binary(builder, registers, less);
+            case LeqNode leq -> binary(builder, registers, leq);
+            case MoreNode more -> binary(builder, registers, more);
+            case MeqNode meq -> binary(builder, registers, meq);
+            case EqualNode eq -> binary(builder, registers, eq);
+            case NotEqualNode neq -> binary(builder, registers, neq);
+            case LogicAndNode lAnd -> binary(builder, registers, lAnd);
+            case LogicOrNode lOr -> binary(builder, registers, lOr);
+            case BitAndNode and -> binary(builder, registers, and);
+            case ExclOrNode exclOr -> binary(builder, registers, exclOr);
+            case BitOrNode or -> binary(builder, registers, or);
+            case LShiftNode lShift -> binary(builder, registers, lShift);
+            case RShiftNode rShift -> binary(builder, registers, rShift);
             case ReturnNode r -> builder
                     .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT))).append(", %eax\n")
                     .append("  addq $").append(spilledRegisterCount * 4).append(", %rsp\n")
@@ -95,6 +96,11 @@ public class CodeGenerator {
                     .append(c.value())
                     .append(", ")
                     .append(registers.get(c));
+            case ConstBoolNode b -> builder.repeat(" ", 2)
+                    .append("movl $")
+                    .append(b.value())
+                    .append(", ")
+                    .append(registers.get(b));
             case Phi _ -> throw new UnsupportedOperationException("phi");
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
@@ -135,7 +141,7 @@ public class CodeGenerator {
             secondParameter = spillRegSource;
         }
 
-        //Move spilled Register in R15 and use R15 as target for binops
+        //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
         if (spillTarget) {
 //            builder.repeat(" ", 2).append("movl ")
 //                    .append(target)
@@ -145,7 +151,7 @@ public class CodeGenerator {
             target = spillRegDest;
         }
 
-
+        //Move first parameter into target register for binop
         builder.repeat(" ", 2).append("movl ")
                 .append(firstParameter)
                 .append(", ")
@@ -161,6 +167,60 @@ public class CodeGenerator {
                     .append(", ")
                     .append(target);
             case MulNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            //TODO: How to handle the boolean results for the conditional jumps? Maybe use the info from the AST
+            case LessNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case LeqNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case MoreNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case MeqNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case EqualNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case NotEqualNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case LogicAndNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case LogicOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case BitAndNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case ExclOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case BitOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            //TODO: Tricky shift details? See Lab 2 Notes and Hints
+            case LShiftNode _ -> builder.repeat(" ", 2).append("sall ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(target);
+            case RShiftNode _ -> builder.repeat(" ", 2).append("sarl ")
                     .append(secondParameter)
                     .append(", ")
                     .append(target);
@@ -207,7 +267,7 @@ public class CodeGenerator {
                     .append(", ")
                     .append(targetOnStack);
         }
-        //Write back from R14 to Stack
+        //Write back from R14 to Stack (Parameter is not changed so doesn't need to be written back)
 //        if (spillSource) {
 //            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
 //            builder.append("\n").repeat(" ", 2).append("movl ")
