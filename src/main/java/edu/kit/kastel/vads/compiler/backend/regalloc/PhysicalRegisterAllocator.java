@@ -134,7 +134,7 @@ public class PhysicalRegisterAllocator {
 
             Set<Register> neighbors = Graphs.neighborSetOf(interferenceGraph, maxWeightVertex);
             coloring.put(maxWeightVertex, getValidColorFromNeighborhood(neighbors, coloring));
-            System.out.println(maxWeightVertex + " -- COLOR --> " + coloring.get(maxWeightVertex));
+            //System.out.println(maxWeightVertex + " -- COLOR --> " + coloring.get(maxWeightVertex));
         }
 
         return coloring;

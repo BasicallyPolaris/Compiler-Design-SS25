@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.backend.aasm.CodeGenerator;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.SsaTranslation;
 import edu.kit.kastel.vads.compiler.ir.optimize.LocalValueNumbering;
+import edu.kit.kastel.vads.compiler.ir.util.GraphVizPrinter;
 import edu.kit.kastel.vads.compiler.ir.util.YCompPrinter;
 import edu.kit.kastel.vads.compiler.lexer.Lexer;
 import edu.kit.kastel.vads.compiler.parser.ParseException;
@@ -49,6 +50,9 @@ public class Main {
                 dumpGraph(graph, tmp, "before-codegen");
             }
         }
+
+        //TODO: Remove Graphviz for jump debugging
+        System.out.println(GraphVizPrinter.print(graphs.getFirst()));
 
 
         String assemblyCode = new CodeGenerator().generateCode(graphs);

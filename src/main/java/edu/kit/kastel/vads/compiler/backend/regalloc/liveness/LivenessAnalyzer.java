@@ -2,14 +2,7 @@ package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
 import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
-import edu.kit.kastel.vads.compiler.ir.node.BinaryOperationNode;
-import edu.kit.kastel.vads.compiler.ir.node.Node;
-import edu.kit.kastel.vads.compiler.ir.node.Block;
-import edu.kit.kastel.vads.compiler.ir.node.ConstIntNode;
-import edu.kit.kastel.vads.compiler.ir.node.Phi;
-import edu.kit.kastel.vads.compiler.ir.node.ProjNode;
-import edu.kit.kastel.vads.compiler.ir.node.ReturnNode;
-import edu.kit.kastel.vads.compiler.ir.node.StartNode;
+import edu.kit.kastel.vads.compiler.ir.node.*;
 
 import java.util.*;
 
@@ -71,13 +64,13 @@ public class LivenessAnalyzer {
                     }
                     //Rule J4
                     case Operation.GOTO -> {
-                        //TODO: Liveness Line needs second line number for jump targets that are used here for the succ predicate
+                        livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
                     }
                     //Rule J5
                     case Operation.CONDITIONAL_GOTO -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
-                        //TODO: Same as above, succ predicate for the jump target
+                        livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
                     }
                 }
             }
@@ -164,12 +157,18 @@ public class LivenessAnalyzer {
             case ConstIntNode c -> {
                 livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
             }
-//          TODO: Implement Jump & CondJump Nodes :)
+            case ConstBoolNode b -> {
+                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
+            }
+//          TODO: Implement Jump & CondJump Nodes
 //            case JumpNode j -> {
-//                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
+//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.GOTO, List.of(), JUMP TARGET (HOW TO FIND IN THE IR TREE?));
 //            }
 //            case CondJumpNode cj -> {
-//                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
+//                List<Register> params = new ArrayList<>();
+//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.LEFT)));
+//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.RIGHT)));
+//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.CONDITIONAL_GOTO, params, JUMP TARGET (HOW TO FIND IN THE IR TREE?)));
 //            }
 
             case Phi _ -> throw new UnsupportedOperationException("phi");

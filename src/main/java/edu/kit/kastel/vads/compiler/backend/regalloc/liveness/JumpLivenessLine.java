@@ -1,21 +1,23 @@
 package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
+import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class AssignmentLivenessLine extends LivenessLine {
+public final class JumpLivenessLine extends LivenessLine {
 
-
-    public AssignmentLivenessLine(int lineNumber, Operation operation, Register target, List<Register> parameters) {
+    public JumpLivenessLine(int lineNumber, Operation operation, List<Register> parameters, int jumpTarget) {
         this.lineNumber = lineNumber;
         this.operation = operation;
-        this.target = target;
         this.parameters = parameters;
         this.liveInVariables = new HashSet<Register>();
-        this.jumpTarget = -1;
+        this.jumpTarget = jumpTarget;
+
+        // TODO: not elegant solution, maybe refactor
+        this.target =  new VirtualRegister(-1);
     }
 
     @Override
@@ -23,7 +25,6 @@ public final class AssignmentLivenessLine extends LivenessLine {
         String params = parameters.stream()
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
-
-        return lineNumber + ": " + target + " = " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
+        return lineNumber + ": " + operation + "(" + params + ")" + "Jump Target: " + jumpTarget +  ", Liveness Variables: " + liveInVariables;
     }
 }

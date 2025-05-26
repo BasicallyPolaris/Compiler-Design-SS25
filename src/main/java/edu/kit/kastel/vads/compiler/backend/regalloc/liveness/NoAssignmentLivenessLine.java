@@ -17,6 +17,7 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
 
         // TODO: not elegant solution, maybe refactor
         this.target =  new VirtualRegister(-1);
+        this.jumpTarget = -1;
     }
 
     @Override
