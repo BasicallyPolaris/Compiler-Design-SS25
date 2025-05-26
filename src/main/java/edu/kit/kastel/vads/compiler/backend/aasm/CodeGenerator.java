@@ -152,11 +152,7 @@ public class CodeGenerator {
         }
 
         //Move first parameter into target register for binop
-        builder.repeat(" ", 2).append("movl ")
-                .append(firstParameter)
-                .append(", ")
-                .append(target)
-                .append("\n");
+        generateMoveCode(builder, firstParameter, target);
         switch (node) {
             case AddNode _ -> builder.repeat(" ", 2).append("addl ")
                     .append(secondParameter)
@@ -262,10 +258,7 @@ public class CodeGenerator {
         //Write back from R15 to the Stack
         if (spillTarget) {
             PhysicalRegister targetOnStack = registers.get(node);
-            builder.append("\n").repeat(" ", 2).append("movl ")
-                    .append(spillRegDest)
-                    .append(", ")
-                    .append(targetOnStack);
+            generateMoveCode(builder, spillRegDest, targetOnStack);
         }
         //Write back from R14 to Stack (Parameter is not changed so doesn't need to be written back)
 //        if (spillSource) {
@@ -275,5 +268,13 @@ public class CodeGenerator {
 //                    .append(", ")
 //                    .append(secondParameterOnStack);
 //        }
+    }
+    private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2)  {
+        if (!reg1.equals(reg2)) {
+            builder.append("\n").repeat(" ", 2).append("movl ")
+                    .append(reg1)
+                    .append(", ")
+                    .append(reg2);
+        }
     }
 }
