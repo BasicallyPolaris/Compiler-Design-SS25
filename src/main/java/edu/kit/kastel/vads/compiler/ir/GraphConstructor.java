@@ -3,7 +3,6 @@ package edu.kit.kastel.vads.compiler.ir;
 import edu.kit.kastel.vads.compiler.ir.node.*;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
-import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.HashSet;

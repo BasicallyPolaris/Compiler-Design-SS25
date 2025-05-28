@@ -9,7 +9,6 @@ import edu.kit.kastel.vads.compiler.ir.util.YCompPrinter;
 import edu.kit.kastel.vads.compiler.lexer.Lexer;
 import edu.kit.kastel.vads.compiler.parser.ParseException;
 import edu.kit.kastel.vads.compiler.parser.Parser;
-import edu.kit.kastel.vads.compiler.parser.Printer;
 import edu.kit.kastel.vads.compiler.parser.TokenSource;
 import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
 import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
