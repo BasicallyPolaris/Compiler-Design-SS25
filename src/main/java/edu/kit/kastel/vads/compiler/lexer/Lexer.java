@@ -36,12 +36,23 @@ public class Lexer {
             case '{' -> separator(SeparatorType.BRACE_OPEN);
             case '}' -> separator(SeparatorType.BRACE_CLOSE);
             case ';' -> separator(SeparatorType.SEMICOLON);
+            case '?' -> new Operator(OperatorType.COND_EXP1, buildSpan(1));
+            case ':' -> new Operator(OperatorType.COND_EXP2, buildSpan(1));
+            case '~' -> new Operator(OperatorType.BIT_NOT, buildSpan(1));
             case '-' -> singleOrAssign(OperatorType.MINUS, OperatorType.ASSIGN_MINUS);
             case '+' -> singleOrAssign(OperatorType.PLUS, OperatorType.ASSIGN_PLUS);
             case '*' -> singleOrAssign(OperatorType.MUL, OperatorType.ASSIGN_MUL);
             case '/' -> singleOrAssign(OperatorType.DIV, OperatorType.ASSIGN_DIV);
             case '%' -> singleOrAssign(OperatorType.MOD, OperatorType.ASSIGN_MOD);
-            case '=' -> new Operator(OperatorType.ASSIGN, buildSpan(1));
+            case '=' -> singleOrAssign(OperatorType.ASSIGN, OperatorType.EQUAL);
+            case '!' -> singleOrAssign(OperatorType.LOG_NOT, OperatorType.NOT_EQUAL);
+            case '^' -> singleOrAssign(OperatorType.BIT_XOR, OperatorType.ASSIGN_BIT_XOR);
+            case '|' -> singleOrDuplicateOperator(OperatorType.BIT_OR, OperatorType.ASSIGN_BIT_OR, OperatorType.LOG_OR);
+            case '&' -> singleOrDuplicateOperator(OperatorType.BIT_AND, OperatorType.ASSIGN_BIT_AND, OperatorType.LOG_AND);
+            case '<' ->
+                    lessOrMoreShift(OperatorType.LESS, OperatorType.BIT_SHIFT_LEFT, OperatorType.ASSIGN_BIT_SHIFT_LEFT);
+            case '>' ->
+                    lessOrMoreShift(OperatorType.MORE, OperatorType.BIT_SHIFT_RIGHT, OperatorType.ASSIGN_BIT_SHIFT_RIGHT);
             default -> {
                 if (isIdentifierChar(peek())) {
                     if (isNumeric(peek())) {
@@ -175,9 +186,9 @@ public class Lexer {
 
     private boolean isIdentifierChar(char c) {
         return c == '_'
-            || c >= 'a' && c <= 'z'
-            || c >= 'A' && c <= 'Z'
-            || c >= '0' && c <= '9';
+                || c >= 'a' && c <= 'z'
+                || c >= 'A' && c <= 'Z'
+                || c >= '0' && c <= '9';
     }
 
     private boolean isNumeric(char c) {
@@ -192,6 +203,28 @@ public class Lexer {
         if (hasMore(1) && peek(1) == '=') {
             return new Operator(assign, buildSpan(2));
         }
+        return new Operator(single, buildSpan(1));
+    }
+
+    private Token lessOrMoreShift(OperatorType single, OperatorType tuple, OperatorType triple) {
+        char singleOperator = single.toString().charAt(0);
+
+        if (hasMore(2) && peek(1) == singleOperator && peek(2) == '=') {
+            return new Operator(triple, buildSpan(3));
+        } else if (hasMore(1) && peek(1) == singleOperator) {
+            return new Operator(tuple, buildSpan(2));
+        }
+        return new Operator(single, buildSpan(1));
+    }
+
+    private Token singleOrDuplicateOperator(OperatorType single, OperatorType single_assign, OperatorType duplicate) {
+        char singleOperator = single.toString().charAt(0);
+
+        if (!hasMore(1)) return new Operator(single, buildSpan(1));
+
+        if (peek(1) == singleOperator) return new Operator(duplicate, buildSpan(2));
+        if (peek(1) == '=') return new Operator(single_assign, buildSpan(2));
+
         return new Operator(single, buildSpan(1));
     }
 
