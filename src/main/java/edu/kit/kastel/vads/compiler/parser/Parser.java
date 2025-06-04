@@ -48,13 +48,14 @@ public class Parser {
     }
 
     private FunctionTree parseFunction() {
+        //TODO (In Lab 3: Function should not expect int as default-return if other returns are possible)
         Keyword returnType = this.tokenSource.expectKeyword(KeywordType.INT);
         Identifier identifier = this.tokenSource.expectIdentifier();
         this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
         BlockTree body = parseBlock();
 
-        // TODO: Only expect at least one function to be naimed main per file ?
+        // TODO: Only expect exactly one function to be naimed main per file ?
         if (!identifier.value().equals("main")) {
             System.out.println(identifier.value());
             throw new ParseException("expected main function but got " + identifier);
@@ -80,31 +81,42 @@ public class Parser {
     private StatementTree parseStatement() {
         StatementTree statement;
         if (this.tokenSource.peek().isKeyword(KeywordType.INT)) {
-            statement = parseDeclaration();
+            statement = parseDeclaration(BasicType.INT);
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
+            statement = parseDeclaration(BasicType.BOOL);
         } else if (this.tokenSource.peek().isKeyword(KeywordType.RETURN)) {
             statement = parseReturn();
         } else {
             statement = parseSimple();
         }
-        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
         return statement;
     }
 
-    private StatementTree parseDeclaration() {
-        Keyword type = this.tokenSource.expectKeyword(KeywordType.INT);
+    private StatementTree parseDeclaration(BasicType basicType) {
+        Keyword type = this.tokenSource.expectKeyword(basicType.getKeywordType());
         Identifier ident = this.tokenSource.expectIdentifier();
         ExpressionTree expr = null;
         if (this.tokenSource.peek().isOperator(OperatorType.ASSIGN)) {
             this.tokenSource.expectOperator(OperatorType.ASSIGN);
             expr = parseExpression();
         }
-        return new DeclarationTree(new TypeTree(BasicType.INT, type.span()), name(ident), expr);
+        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+
+        // To get the scope, parse all further statements as in scope statements of this declaration
+        List<StatementTree> statements = new ArrayList<>();
+        while (!(this.tokenSource.peek() instanceof Separator sep && sep.type() == SeparatorType.BRACE_CLOSE)) {
+            statements.add(parseStatement());
+        }
+
+        return new DeclarationTree(new TypeTree(basicType, type.span()), name(ident), expr, statements);
     }
 
     private StatementTree parseSimple() {
         LValueTree lValue = parseLValue();
         Operator assignmentOperator = parseAssignmentOperator();
         ExpressionTree expression = parseExpression();
+        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+
         return new AssignmentTree(lValue, assignmentOperator, expression);
     }
 
@@ -135,6 +147,8 @@ public class Parser {
     private StatementTree parseReturn() {
         Keyword ret = this.tokenSource.expectKeyword(KeywordType.RETURN);
         ExpressionTree expression = parseExpression();
+        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+
         return new ReturnTree(expression, ret.span().start());
     }
 

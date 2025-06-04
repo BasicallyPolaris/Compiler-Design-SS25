@@ -1,20 +1,6 @@
 package edu.kit.kastel.vads.compiler.parser;
 
-import edu.kit.kastel.vads.compiler.parser.ast.AssignmentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BinaryOperationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BlockTree;
-import edu.kit.kastel.vads.compiler.parser.ast.IdentExpressionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LValueIdentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LiteralTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NameTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NegateTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ReturnTree;
-import edu.kit.kastel.vads.compiler.parser.ast.Tree;
-import edu.kit.kastel.vads.compiler.parser.ast.DeclarationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
-import edu.kit.kastel.vads.compiler.parser.ast.StatementTree;
-import edu.kit.kastel.vads.compiler.parser.ast.TypeTree;
+import edu.kit.kastel.vads.compiler.parser.ast.*;
 
 import java.util.List;
 
@@ -93,7 +79,7 @@ public class Printer {
                 printTree(expression);
                 semicolon();
             }
-            case DeclarationTree(var type, var name, var initializer) -> {
+            case DeclarationTree(var type, var name, var initializer, List<StatementTree> Statements) -> {
                 printTree(type);
                 space();
                 printTree(name);
@@ -102,6 +88,9 @@ public class Printer {
                     printTree(initializer);
                 }
                 semicolon();
+                for (StatementTree statement : Statements) {
+                    printTree(statement);
+                }
             }
             case ReturnTree(var expr, _) -> {
                 print("return ");
@@ -110,6 +99,17 @@ public class Printer {
             }
             case LValueIdentTree(var name) -> printTree(name);
             case IdentExpressionTree(var name) -> printTree(name);
+            //TODO: Implement missing cases
+            case BreakTree breakTree -> {
+            }
+            case ContinueTree continueTree -> {
+            }
+            case IfTree ifTree -> {
+            }
+            case NopTree nopTree -> {
+            }
+            case WhileTree whileTree -> {
+            }
         }
     }
 

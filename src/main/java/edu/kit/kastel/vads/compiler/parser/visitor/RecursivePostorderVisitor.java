@@ -1,21 +1,9 @@
 package edu.kit.kastel.vads.compiler.parser.visitor;
 
-import edu.kit.kastel.vads.compiler.parser.ast.AssignmentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BinaryOperationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BlockTree;
-import edu.kit.kastel.vads.compiler.parser.ast.DeclarationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.IdentExpressionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LValueIdentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LiteralTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NameTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NegateTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ReturnTree;
-import edu.kit.kastel.vads.compiler.parser.ast.StatementTree;
-import edu.kit.kastel.vads.compiler.parser.ast.TypeTree;
+import edu.kit.kastel.vads.compiler.parser.ast.*;
 
 /// A visitor that traverses a tree in postorder
+///
 /// @param <T> a type for additional data
 /// @param <R> a type for a return type
 public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
@@ -55,13 +43,33 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
 
     @Override
     public R visit(DeclarationTree declarationTree, T data) {
-        R r = declarationTree.type().accept(this, data);
-        r = declarationTree.name().accept(this, accumulate(data, r));
+        T currentData = data;
+        R lastResult;
+
+        // 1. Visit type
+        lastResult = declarationTree.type().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 2. Visit name
+        lastResult = declarationTree.name().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 3. Visit initializer (if it exists)
         if (declarationTree.initializer() != null) {
-            r = declarationTree.initializer().accept(this, accumulate(data, r));
+            lastResult = declarationTree.initializer().accept(this, currentData);
+            currentData = accumulate(currentData, lastResult);
         }
-        r = this.visitor.visit(declarationTree, accumulate(data, r));
-        return r;
+
+        // 4. Visit the DeclarationTree node itself
+        lastResult = this.visitor.visit(declarationTree, currentData);
+
+        // 5. Visit statements that come after the declaration
+        for (StatementTree statement : declarationTree.statements()) {
+            lastResult = statement.accept(this, currentData);
+            currentData = accumulate(currentData, lastResult);
+        }
+
+        return lastResult;
     }
 
     @Override
@@ -123,9 +131,22 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         return r;
     }
 
+
     @Override
     public R visit(TypeTree typeTree, T data) {
         return this.visitor.visit(typeTree, data);
+    }
+
+    //TODO: Implement missing cases
+    @Override
+    public R visit(IfTree ifTree, T data) {
+        return null;
+    }
+
+    //TODO: Implement missing cases
+    @Override
+    public R visit(WhileTree whileTree, T data) {
+        return null;
     }
 
     protected T accumulate(T data, R value) {

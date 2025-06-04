@@ -60,8 +60,8 @@ class VariableStatusAnalysis implements NoOpVisitor<Namespace<VariableStatusAnal
     public Unit visit(DeclarationTree declarationTree, Namespace<VariableStatus> data) {
         checkUndeclared(declarationTree.name(), data.get(declarationTree.name()));
         VariableStatus status = declarationTree.initializer() == null
-            ? VariableStatus.DECLARED
-            : VariableStatus.INITIALIZED;
+                ? VariableStatus.DECLARED
+                : VariableStatus.INITIALIZED;
         updateStatus(data, status, declarationTree.name());
         return NoOpVisitor.super.visit(declarationTree, data);
     }

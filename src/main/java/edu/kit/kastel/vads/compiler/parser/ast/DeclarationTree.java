@@ -4,13 +4,29 @@ import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 import org.jspecify.annotations.Nullable;
 
-public record DeclarationTree(TypeTree type, NameTree name, @Nullable ExpressionTree initializer) implements StatementTree {
+import java.util.List;
+
+public record DeclarationTree(TypeTree type, NameTree name, @Nullable ExpressionTree initializer,
+                              List<StatementTree> statements) implements StatementTree {
+
+    public DeclarationTree {
+        statements = List.copyOf(statements);
+    }
+
     @Override
     public Span span() {
+        Span baseSpan;
         if (initializer() != null) {
-            return type().span().merge(initializer().span());
+            baseSpan = type().span().merge(initializer().span());
+        } else {
+            baseSpan = type().span().merge(name().span());
         }
-        return type().span().merge(name().span());
+
+        for (StatementTree statement : statements) {
+            return baseSpan.merge(statement.span());
+        }
+
+        return baseSpan;
     }
 
     @Override
