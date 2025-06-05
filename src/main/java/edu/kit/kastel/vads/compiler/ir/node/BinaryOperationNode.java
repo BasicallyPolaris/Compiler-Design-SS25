@@ -26,11 +26,11 @@ public sealed abstract class BinaryOperationNode extends Node permits AddNode, B
         if (a.getClass() != b.getClass()) {
             return false;
         }
-        if (a.predecessor(LEFT) == b.predecessor(LEFT) && a.predecessor(RIGHT) == b.predecessor(RIGHT)) {
+        if (a.predecessor(LEFT).hashCode() == b.predecessor(LEFT).hashCode() && a.predecessor(RIGHT).hashCode() == b.predecessor(RIGHT).hashCode()) {
             return true;
         }
         // commutative operation: op(x, y) == op(y, x)
-        return a.predecessor(LEFT) == b.predecessor(RIGHT) && a.predecessor(RIGHT) == b.predecessor(LEFT);
+        return a.predecessor(LEFT).hashCode() == b.predecessor(RIGHT).hashCode() && a.predecessor(RIGHT).hashCode() == b.predecessor(LEFT).hashCode();
     }
 
     @Override
@@ -39,8 +39,8 @@ public sealed abstract class BinaryOperationNode extends Node permits AddNode, B
             return false;
         }
         return obj.getClass() == this.getClass()
-            && this.predecessor(LEFT) == binOp.predecessor(LEFT)
-            && this.predecessor(RIGHT) == binOp.predecessor(RIGHT);
+            && this.predecessor(LEFT).hashCode() == binOp.predecessor(LEFT).hashCode()
+            && this.predecessor(RIGHT).hashCode() == binOp.predecessor(RIGHT).hashCode();
     }
 
     @Override
