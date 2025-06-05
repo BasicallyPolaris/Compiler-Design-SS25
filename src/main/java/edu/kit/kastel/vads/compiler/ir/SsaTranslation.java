@@ -132,6 +132,14 @@ public class SsaTranslation {
                 Node rhs = declarationTree.initializer().accept(this, data).orElseThrow();
                 data.writeVariable(declarationTree.name().name(), data.currentBlock(), rhs);
             }
+            //visit the new additional statements
+            for (StatementTree statement : declarationTree.statements()) {
+                statement.accept(this, data);
+                // skip everything after a return in a block
+                if (statement instanceof ReturnTree) {
+                    break;
+                }
+            }
             popSpan();
             return NOT_AN_EXPRESSION;
         }
