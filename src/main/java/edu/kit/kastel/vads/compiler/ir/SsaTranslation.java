@@ -73,6 +73,11 @@ public class SsaTranslation {
                 case ASSIGN_MINUS -> data.constructor::newSub;
                 case ASSIGN_PLUS -> data.constructor::newAdd;
                 case ASSIGN_MUL -> data.constructor::newMul;
+                case ASSIGN_BIT_AND -> data.constructor::newBitAnd;
+                case ASSIGN_BIT_XOR -> data.constructor::newBitXor;
+                case ASSIGN_BIT_OR -> data.constructor::newBitOr;
+                case ASSIGN_BIT_SHIFT_LEFT -> data.constructor::newShiftLeft;
+                case ASSIGN_BIT_SHIFT_RIGHT -> data.constructor::newShiftRight;
                 case ASSIGN_DIV -> (lhs, rhs) -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case ASSIGN_MOD -> (lhs, rhs) -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 case ASSIGN -> null;
@@ -102,6 +107,19 @@ public class SsaTranslation {
                 case MINUS -> data.constructor.newSub(lhs, rhs);
                 case PLUS -> data.constructor.newAdd(lhs, rhs);
                 case MUL -> data.constructor.newMul(lhs, rhs);
+                case BIT_SHIFT_LEFT -> data.constructor.newShiftLeft(lhs, rhs);
+                case BIT_SHIFT_RIGHT -> data.constructor.newShiftRight(lhs, rhs);
+                case LESS -> data.constructor.newLess(lhs, rhs);
+                case LESS_EQUAL -> data.constructor.newLessEq(lhs, rhs);
+                case MORE -> data.constructor.newMore(lhs, rhs);
+                case MORE_EQUAL -> data.constructor.newMoreEq(lhs, rhs);
+                case EQUAL -> data.constructor.newEq(lhs, rhs);
+                case NOT_EQUAL -> data.constructor.newNotEq(lhs, rhs);
+                case BIT_AND -> data.constructor.newBitAnd(lhs, rhs);
+                case BIT_XOR -> data.constructor.newBitXor(lhs, rhs);
+                case BIT_OR -> data.constructor.newBitOr(lhs, rhs);
+                case LOG_AND -> data.constructor.newAnd(lhs, rhs);
+                case LOG_OR -> data.constructor.newOr(lhs, rhs);
                 case DIV -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case MOD -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 default ->
@@ -189,6 +207,16 @@ public class SsaTranslation {
             return Optional.of(res);
         }
 
+        //TODO: Implement
+        public Optional<Node> visit(BitNotTree bitNotTree, SsaTranslation data) {
+            return Optional.empty();
+        }
+
+        //TODO: Implement
+        public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
+            return Optional.empty();
+        }
+
         @Override
         public Optional<Node> visit(ProgramTree programTree, SsaTranslation data) {
             throw new UnsupportedOperationException();
@@ -211,6 +239,12 @@ public class SsaTranslation {
 
         //TODO: Implement
         @Override
+        public Optional<Node> visit(SequentialStatementTree sequentialStatementTree, SsaTranslation data) {
+            return Optional.empty();
+        }
+
+        //TODO: Implement
+        @Override
         public Optional<Node> visit(IfTree ifTree, SsaTranslation data) {
             return Optional.empty();
         }
@@ -218,6 +252,12 @@ public class SsaTranslation {
         //TODO: Implement
         @Override
         public Optional<Node> visit(WhileTree whileTree, SsaTranslation data) {
+            return Optional.empty();
+        }
+
+        //TODO: Implement
+        @Override
+        public Optional<Node> visit(CondExprTree condExprTree, SsaTranslation data) {
             return Optional.empty();
         }
 

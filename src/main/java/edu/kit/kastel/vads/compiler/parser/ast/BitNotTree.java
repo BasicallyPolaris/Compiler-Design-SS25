@@ -1,15 +1,12 @@
 package edu.kit.kastel.vads.compiler.parser.ast;
 
-import edu.kit.kastel.vads.compiler.lexer.Operator;
 import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
-import org.jspecify.annotations.Nullable;
 
-public record IfTree(ExpressionTree expression, StatementTree ifStatement, @Nullable StatementTree thenStatement) implements StatementTree {
-
+public record BitNotTree(ExpressionTree expression, Span minusPos) implements ExpressionTree {
     @Override
     public Span span() {
-        return ifStatement.span().merge(thenStatement.span());
+        return minusPos().merge(expression().span());
     }
 
     @Override

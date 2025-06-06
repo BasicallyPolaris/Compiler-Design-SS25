@@ -6,6 +6,7 @@ import edu.kit.kastel.vads.compiler.lexer.Operator.OperatorType;
 import edu.kit.kastel.vads.compiler.lexer.Separator.SeparatorType;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class Lexer {
@@ -48,15 +49,20 @@ public class Lexer {
             case '!' -> singleOrAssign(OperatorType.LOG_NOT, OperatorType.NOT_EQUAL);
             case '^' -> singleOrAssign(OperatorType.BIT_XOR, OperatorType.ASSIGN_BIT_XOR);
             case '|' -> singleOrDuplicateOperator(OperatorType.BIT_OR, OperatorType.ASSIGN_BIT_OR, OperatorType.LOG_OR);
-            case '&' -> singleOrDuplicateOperator(OperatorType.BIT_AND, OperatorType.ASSIGN_BIT_AND, OperatorType.LOG_AND);
+            case '&' ->
+                    singleOrDuplicateOperator(OperatorType.BIT_AND, OperatorType.ASSIGN_BIT_AND, OperatorType.LOG_AND);
             case '<' ->
                     lessOrMoreShift(OperatorType.LESS, OperatorType.BIT_SHIFT_LEFT, OperatorType.ASSIGN_BIT_SHIFT_LEFT);
             case '>' ->
                     lessOrMoreShift(OperatorType.MORE, OperatorType.BIT_SHIFT_RIGHT, OperatorType.ASSIGN_BIT_SHIFT_RIGHT);
             default -> {
-                if (isIdentifierChar(peek())) {
+                if (isBoolean()) {
+
+                } else if (isIdentifierChar(peek())) {
                     if (isNumeric(peek())) {
                         yield lexNumber();
+                    } else if (isBoolean()) {
+                        yield lexBool();
                     }
                     yield lexIdentifierOrKeyword();
                 }
@@ -157,6 +163,15 @@ public class Lexer {
         return new Identifier(id, buildSpan(off));
     }
 
+    //we check before method use whether true and false are the only cases -> use else as default
+    private Token lexBool() {
+        if (isTrue()) {
+            return new BooleanLiteral("true", buildSpan(4));
+        } else {
+            return new BooleanLiteral("false", buildSpan(5));
+        }
+    }
+
     private Token lexNumber() {
         if (isHexPrefix()) {
             int off = 2;
@@ -189,6 +204,18 @@ public class Lexer {
                 || c >= 'a' && c <= 'z'
                 || c >= 'A' && c <= 'Z'
                 || c >= '0' && c <= '9';
+    }
+
+    private boolean isBoolean() {
+        return (isFalse() || isTrue());
+    }
+
+    private boolean isTrue() {
+        return (peekStringEquals("true"));
+    }
+
+    private boolean isFalse() {
+        return (peekStringEquals("false"));
     }
 
     private boolean isNumeric(char c) {
@@ -238,6 +265,24 @@ public class Lexer {
 
     private char peek() {
         return this.source.charAt(this.pos);
+    }
+
+    private boolean peekStringEquals(String expected) {
+        int length = expected.length();
+        if (hasMore(length)) {
+            boolean peekIsExpected = true;
+
+            for (int i = 0; i < length; i++) {
+                if (expected.charAt(i) != peek(i)) {
+                    peekIsExpected = false;
+                    break;
+                }
+            }
+
+            return peekIsExpected;
+        }
+
+        return false;
     }
 
     private boolean hasMore(int offset) {

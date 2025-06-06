@@ -149,6 +149,43 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         return null;
     }
 
+    @Override
+    public R visit(LogNotTree logNotTree, T data) {
+        R r = logNotTree.expression().accept(this, data);
+        r = this.visitor.visit(logNotTree, accumulate(data, r));
+        return r;
+    }
+
+    @Override
+    public R visit(BitNotTree bitNotTree, T data) {
+        R r = bitNotTree.expression().accept(this, data);
+        r = this.visitor.visit(bitNotTree, accumulate(data, r));
+        return r;
+    }
+
+    @Override
+    public R visit(SequentialStatementTree sequentialStatementTree, T data) {
+        T d = data;
+        R r;
+
+        // 1. Visit the Root
+        r = sequentialStatementTree.statement().accept(this, d);
+        d = accumulate(d, r);
+
+        // 2. Visit statements that come after the first statement at root
+        for (StatementTree statement : sequentialStatementTree.statements()) {
+            r = statement.accept(this, d);
+            d = accumulate(d, r);
+        }
+
+        return r;
+    }
+
+    @Override
+    public R visit(CondExprTree condExprTree, T data) {
+        return null;
+    }
+
     protected T accumulate(T data, R value) {
         return data;
     }

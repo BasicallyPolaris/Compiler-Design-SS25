@@ -1,5 +1,6 @@
 package edu.kit.kastel.vads.compiler.parser;
 
+import edu.kit.kastel.vads.compiler.lexer.Operator;
 import edu.kit.kastel.vads.compiler.parser.ast.*;
 
 import java.util.List;
@@ -53,6 +54,12 @@ public class Printer {
                     lineBreak();
                 }
             }
+            case SequentialStatementTree(var firstStatement, var statements) -> {
+                printTree(firstStatement);
+                for (StatementTree statement : statements) {
+                    printTree(statement);
+                }
+            }
             case TypeTree(var type, _) -> print(type.asString());
             case BinaryOperationTree(var lhs, var rhs, var op) -> {
                 print("(");
@@ -74,7 +81,7 @@ public class Printer {
             case AssignmentTree(var lValue, var op, var expression) -> {
                 printTree(lValue);
                 space();
-                this.builder.append(op);
+                this.builder.append(op.asString());
                 space();
                 printTree(expression);
                 semicolon();
@@ -101,14 +108,50 @@ public class Printer {
             case IdentExpressionTree(var name) -> printTree(name);
             //TODO: Implement missing cases
             case BreakTree breakTree -> {
+                print("break;");
+                lineBreak();
             }
             case ContinueTree continueTree -> {
+                print("continue;");
+                lineBreak();
             }
-            case IfTree ifTree -> {
+            case IfTree(var expression, var ifStatement, var elseStatement) -> {
+                print("if(");
+                printTree(expression);
+                print(") ");
+                printTree(ifStatement);
+                if (elseStatement != null) {
+                    print("else ");
+                    printTree(elseStatement);
+                }
+                lineBreak();
             }
             case NopTree nopTree -> {
+                print("");
             }
-            case WhileTree whileTree -> {
+            case WhileTree(var expression, var statement) -> {
+                print("while(");
+                printTree(expression);
+                print(") ");
+                printTree(statement);
+                lineBreak();
+            }
+            case CondExprTree(var cond, var exp1, var exp2) -> {
+                printTree(cond);
+                print(" ? ");
+                printTree(exp1);
+                print(" : ");
+                printTree(exp2);
+            }
+            case BitNotTree(var expression, _) -> {
+                print("~(");
+                printTree(expression);
+                print(")");
+            }
+            case LogNotTree(var expression, _) -> {
+                print("!(");
+                printTree(expression);
+                print(")");
             }
         }
     }

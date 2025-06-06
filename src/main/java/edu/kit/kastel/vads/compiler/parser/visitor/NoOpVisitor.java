@@ -52,6 +52,16 @@ public interface NoOpVisitor<T> extends Visitor<T, Unit> {
     }
 
     @Override
+    default Unit visit(LogNotTree logNotTree, T data) {
+        return Unit.INSTANCE;
+    }
+
+    @Override
+    default Unit visit(BitNotTree bitNotTree, T data) {
+        return Unit.INSTANCE;
+    }
+
+    @Override
     default Unit visit(NegateTree negateTree, T data) {
         return Unit.INSTANCE;
     }
@@ -78,6 +88,16 @@ public interface NoOpVisitor<T> extends Visitor<T, Unit> {
 
     @Override
     default Unit visit(IfTree ifTree, T data) {
+        return Unit.INSTANCE;
+    }
+
+    @Override
+    default Unit visit(CondExprTree condExprTree, T data) {
+        return Unit.INSTANCE;
+    }
+
+    @Override
+    default Unit visit(SequentialStatementTree sequentialStatementTree, T data) {
         return Unit.INSTANCE;
     }
 }

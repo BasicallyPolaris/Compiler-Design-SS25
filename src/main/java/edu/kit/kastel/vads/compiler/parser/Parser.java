@@ -10,22 +10,7 @@ import edu.kit.kastel.vads.compiler.lexer.Separator;
 import edu.kit.kastel.vads.compiler.lexer.Separator.SeparatorType;
 import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.lexer.Token;
-import edu.kit.kastel.vads.compiler.parser.ast.AssignmentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BinaryOperationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.BlockTree;
-import edu.kit.kastel.vads.compiler.parser.ast.DeclarationTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ExpressionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.IdentExpressionTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LValueIdentTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LValueTree;
-import edu.kit.kastel.vads.compiler.parser.ast.LiteralTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NameTree;
-import edu.kit.kastel.vads.compiler.parser.ast.NegateTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
-import edu.kit.kastel.vads.compiler.parser.ast.ReturnTree;
-import edu.kit.kastel.vads.compiler.parser.ast.StatementTree;
-import edu.kit.kastel.vads.compiler.parser.ast.TypeTree;
+import edu.kit.kastel.vads.compiler.parser.ast.*;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 import edu.kit.kastel.vads.compiler.parser.type.BasicType;
 
@@ -81,18 +66,28 @@ public class Parser {
     private StatementTree parseStatement() {
         StatementTree statement;
         if (this.tokenSource.peek().isKeyword(KeywordType.INT)) {
-            statement = parseDeclaration(BasicType.INT);
+            statement = parseDeclaration(BasicType.INT, SeparatorType.SEMICOLON);
         } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
-            statement = parseDeclaration(BasicType.BOOL);
+            statement = parseDeclaration(BasicType.BOOL, SeparatorType.SEMICOLON);
         } else if (this.tokenSource.peek().isKeyword(KeywordType.RETURN)) {
             statement = parseReturn();
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.WHILE)) {
+            statement = parseWhile();
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.FOR)) {
+            statement = parseFor();
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.IF)) {
+            statement = parseIf();
         } else {
             statement = parseSimple();
         }
         return statement;
     }
 
-    private StatementTree parseDeclaration(BasicType basicType) {
+    private StatementTree parseDeclaration(BasicType basicType, SeparatorType expectedSeparator) {
+        return parseDeclaration(basicType, expectedSeparator, true);
+    }
+
+    private StatementTree parseDeclaration(BasicType basicType, SeparatorType expectedSeparator, boolean shouldParseRecursively) {
         Keyword type = this.tokenSource.expectKeyword(basicType.getKeywordType());
         Identifier ident = this.tokenSource.expectIdentifier();
         ExpressionTree expr = null;
@@ -100,22 +95,28 @@ public class Parser {
             this.tokenSource.expectOperator(OperatorType.ASSIGN);
             expr = parseExpression();
         }
-        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+        this.tokenSource.expectSeparator(expectedSeparator);
 
         // To get the scope, parse all further statements as in scope statements of this declaration
         List<StatementTree> statements = new ArrayList<>();
-        while (!(this.tokenSource.peek() instanceof Separator sep && sep.type() == SeparatorType.BRACE_CLOSE)) {
-            statements.add(parseStatement());
+        if (shouldParseRecursively) {
+            while (!(this.tokenSource.peek() instanceof Separator sep && sep.type() == SeparatorType.BRACE_CLOSE)) {
+                statements.add(parseStatement());
+            }
         }
 
         return new DeclarationTree(new TypeTree(basicType, type.span()), name(ident), expr, statements);
     }
 
     private StatementTree parseSimple() {
+        return parseSimple(true);
+    }
+
+    private StatementTree parseSimple(boolean expectSeparator) {
         LValueTree lValue = parseLValue();
         Operator assignmentOperator = parseAssignmentOperator();
         ExpressionTree expression = parseExpression();
-        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+        if (expectSeparator) this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
 
         return new AssignmentTree(lValue, assignmentOperator, expression);
     }
@@ -123,7 +124,8 @@ public class Parser {
     private Operator parseAssignmentOperator() {
         if (this.tokenSource.peek() instanceof Operator op) {
             return switch (op.type()) {
-                case ASSIGN, ASSIGN_DIV, ASSIGN_MINUS, ASSIGN_MOD, ASSIGN_MUL, ASSIGN_PLUS -> {
+                case ASSIGN, ASSIGN_DIV, ASSIGN_MINUS, ASSIGN_MOD, ASSIGN_MUL, ASSIGN_PLUS, ASSIGN_BIT_OR,
+                     ASSIGN_BIT_AND, ASSIGN_BIT_XOR, ASSIGN_BIT_SHIFT_LEFT, ASSIGN_BIT_SHIFT_RIGHT -> {
                     this.tokenSource.consume();
                     yield op;
                 }
@@ -153,6 +155,130 @@ public class Parser {
     }
 
     private ExpressionTree parseExpression() {
+        ExpressionTree lhs = parseExpressionLogOr();
+        // a ? b : ( c ? d : e )
+        // parse cond expr
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.COND_EXP1)) {
+                this.tokenSource.consume();
+                // a ? parsed
+                ExpressionTree mhs = parseExpression();
+                this.tokenSource.expectOperator(OperatorType.COND_EXP2);
+                // (a ? b :) parsed
+                ExpressionTree rhs = parseExpression();
+                lhs = new CondExprTree(lhs, mhs, rhs);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionLogOr() {
+        ExpressionTree lhs = parseExpressionLogAnd();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.LOG_OR)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionLogAnd(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionLogAnd() {
+        ExpressionTree lhs = parseExpressionBitOr();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.LOG_AND)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionBitOr(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionBitOr() {
+        ExpressionTree lhs = parseExpressionBitXor();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.BIT_OR)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionBitXor(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionBitXor() {
+        ExpressionTree lhs = parseExpressionBitAnd();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.BIT_XOR)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionBitAnd(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionBitAnd() {
+        ExpressionTree lhs = parseExpressionEquals();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.BIT_AND)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionEquals(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionEquals() {
+        ExpressionTree lhs = parseExpressionCompares();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.EQUAL || type == OperatorType.NOT_EQUAL)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionCompares(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionCompares() {
+        ExpressionTree lhs = parseExpressionShifts();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.LESS || type == OperatorType.LESS_EQUAL || type == OperatorType.MORE || type == OperatorType.MORE_EQUAL)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionShifts(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionShifts() {
+        ExpressionTree lhs = parseExpressionSums();
+        while (true) {
+            if (this.tokenSource.peek() instanceof Operator(var type, _)
+                    && (type == OperatorType.BIT_SHIFT_LEFT || type == OperatorType.BIT_SHIFT_RIGHT)) {
+                this.tokenSource.consume();
+                lhs = new BinaryOperationTree(lhs, parseExpressionSums(), type);
+            } else {
+                return lhs;
+            }
+        }
+    }
+
+    private ExpressionTree parseExpressionSums() {
         ExpressionTree lhs = parseTerm();
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
@@ -190,6 +316,14 @@ public class Parser {
                 Span span = this.tokenSource.consume().span();
                 yield new NegateTree(parseFactor(), span);
             }
+            case Operator(var type, _) when type == OperatorType.LOG_NOT -> {
+                Span span = this.tokenSource.consume().span();
+                yield new LogNotTree(parseFactor(), span);
+            }
+            case Operator(var type, _) when type == OperatorType.BIT_NOT -> {
+                Span span = this.tokenSource.consume().span();
+                yield new BitNotTree(parseFactor(), span);
+            }
             case Identifier ident -> {
                 this.tokenSource.consume();
                 yield new IdentExpressionTree(name(ident));
@@ -200,6 +334,95 @@ public class Parser {
             }
             case Token t -> throw new ParseException("invalid factor " + t);
         };
+    }
+
+    private StatementTree parseIf() {
+        this.tokenSource.expectKeyword(KeywordType.IF);
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
+        ExpressionTree conditionExpression;
+        conditionExpression = parseExpression();
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
+
+        StatementTree bodyIf = parseStatement();
+
+        // Check for else Statement
+        if (this.tokenSource.peek().isKeyword(KeywordType.ELSE)) {
+            this.tokenSource.consume();
+            StatementTree bodyElse = parseStatement();
+            return new IfTree(conditionExpression, bodyIf, bodyElse);
+        } else {
+            return new IfTree(conditionExpression, bodyIf, null);
+        }
+    }
+
+    private StatementTree parseWhile() {
+        this.tokenSource.expectKeyword(KeywordType.WHILE);
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
+        //TODO: How to force data types (in this case: bool) for expressions
+        ExpressionTree expression = parseExpression();
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
+        BlockTree body = parseBlock();
+
+        return new WhileTree(expression, body);
+    }
+
+    private StatementTree parseFor() {
+        this.tokenSource.expectKeyword(KeywordType.FOR);
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
+        StatementTree initialStatement = null;
+        ExpressionTree conditionExpression;
+        StatementTree incrementStatement = null;
+
+        // Check for initial Statement
+        if (this.tokenSource.peek().isKeyword(KeywordType.INT)) {
+            initialStatement = parseDeclaration(BasicType.INT, SeparatorType.SEMICOLON, false);
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
+            initialStatement = parseDeclaration(BasicType.BOOL, SeparatorType.SEMICOLON, false);
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN) || this.tokenSource.peek() instanceof Identifier) {
+            initialStatement = parseSimple();
+        } else {
+            this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+        }
+
+        // Check for inner expression
+        conditionExpression = parseExpression();
+        this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+
+        // Check for final Statement
+        if (this.tokenSource.peek().isKeyword(KeywordType.INT)) {
+            incrementStatement = parseDeclaration(BasicType.INT, SeparatorType.PAREN_CLOSE, false);
+        } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
+            incrementStatement = parseDeclaration(BasicType.BOOL, SeparatorType.PAREN_CLOSE, false);
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN) || this.tokenSource.peek() instanceof Identifier) {
+            incrementStatement = parseSimple(false);
+        }
+        this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
+
+        BlockTree body = parseBlock();
+
+        // Adopt parsed block to have increment statement at end of the loop
+        if (incrementStatement != null) {
+            List<StatementTree> currentStatements = body.statements();
+            List<StatementTree> newStatements = new ArrayList<>(currentStatements);
+            newStatements.add(incrementStatement);
+            body = new BlockTree(newStatements, body.span());
+        }
+
+        // If it's a declaration, return the nested DeclarationTree as ForLoop
+        if (initialStatement instanceof
+                DeclarationTree initialDeclarationTree) {
+            initialDeclarationTree.statements().addFirst(new WhileTree(conditionExpression, body));
+            return initialDeclarationTree;
+        }
+
+        // Otherwise return a SequentialStatementTree or the simple While Loop
+        if (initialStatement != null) {
+            return new SequentialStatementTree(initialStatement, List.of(new WhileTree(conditionExpression, body)));
+        }
+
+        return new
+
+                WhileTree(conditionExpression, body);
     }
 
     private static NameTree name(Identifier ident) {

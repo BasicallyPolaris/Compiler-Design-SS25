@@ -1,17 +1,6 @@
 package edu.kit.kastel.vads.compiler.ir;
 
-import edu.kit.kastel.vads.compiler.ir.node.AddNode;
-import edu.kit.kastel.vads.compiler.ir.node.Block;
-import edu.kit.kastel.vads.compiler.ir.node.ConstIntNode;
-import edu.kit.kastel.vads.compiler.ir.node.DivNode;
-import edu.kit.kastel.vads.compiler.ir.node.ModNode;
-import edu.kit.kastel.vads.compiler.ir.node.MulNode;
-import edu.kit.kastel.vads.compiler.ir.node.Node;
-import edu.kit.kastel.vads.compiler.ir.node.Phi;
-import edu.kit.kastel.vads.compiler.ir.node.ProjNode;
-import edu.kit.kastel.vads.compiler.ir.node.ReturnNode;
-import edu.kit.kastel.vads.compiler.ir.node.StartNode;
-import edu.kit.kastel.vads.compiler.ir.node.SubNode;
+import edu.kit.kastel.vads.compiler.ir.node.*;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 
@@ -53,6 +42,58 @@ class GraphConstructor {
 
     public Node newMul(Node left, Node right) {
         return this.optimizer.transform(new MulNode(currentBlock(), left, right));
+    }
+
+    public Node newShiftLeft(Node left, Node right) {
+        return this.optimizer.transform(new LShiftNode(currentBlock(), left, right));
+    }
+
+    public Node newShiftRight(Node left, Node right) {
+        return this.optimizer.transform(new RShiftNode(currentBlock(), left, right));
+    }
+
+    public Node newLess(Node left, Node right) {
+        return this.optimizer.transform(new LessNode(currentBlock(), left, right));
+    }
+
+    public Node newLessEq(Node left, Node right) {
+        return this.optimizer.transform(new LeqNode(currentBlock(), left, right));
+    }
+
+    public Node newMore(Node left, Node right) {
+        return this.optimizer.transform(new MoreNode(currentBlock(), left, right));
+    }
+
+    public Node newMoreEq(Node left, Node right) {
+        return this.optimizer.transform(new MeqNode(currentBlock(), left, right));
+    }
+
+    public Node newEq(Node left, Node right) {
+        return this.optimizer.transform(new EqualNode(currentBlock(), left, right));
+    }
+
+    public Node newNotEq(Node left, Node right) {
+        return this.optimizer.transform(new NotEqualNode(currentBlock(), left, right));
+    }
+
+    public Node newBitAnd(Node left, Node right) {
+        return this.optimizer.transform(new BitAndNode(currentBlock(), left, right));
+    }
+
+    public Node newBitXor(Node left, Node right) {
+        return this.optimizer.transform(new ExclOrNode(currentBlock(), left, right));
+    }
+
+    public Node newBitOr(Node left, Node right) {
+        return this.optimizer.transform(new BitOrNode(currentBlock(), left, right));
+    }
+
+    public Node newAnd(Node left, Node right) {
+        return this.optimizer.transform(new LogicAndNode(currentBlock(), left, right));
+    }
+
+    public Node newOr(Node left, Node right) {
+        return this.optimizer.transform(new LogicOrNode(currentBlock(), left, right));
     }
 
     public Node newDiv(Node left, Node right) {
