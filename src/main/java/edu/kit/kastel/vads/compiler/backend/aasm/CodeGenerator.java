@@ -101,10 +101,20 @@ public class CodeGenerator {
                     .append(b.value())
                     .append(", ")
                     .append(registers.get(b));
+
             case Phi _ -> throw new UnsupportedOperationException("phi");
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
                 return;
+            }
+            //TODO
+            case CondExprNode condExprNode -> {
+            }
+            case IfElseNode ifElseNode -> {
+            }
+            case IfNode ifNode -> {
+            }
+            case WhileNode whileNode -> {
             }
         }
         builder.append("\n");

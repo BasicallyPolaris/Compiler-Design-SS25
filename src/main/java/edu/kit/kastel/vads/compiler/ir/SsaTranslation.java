@@ -82,7 +82,7 @@ public class SsaTranslation {
                 case ASSIGN_MOD -> (lhs, rhs) -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 case ASSIGN -> null;
                 default ->
-                    throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
+                        throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
             };
 
             switch (assignmentTree.lValue()) {
@@ -123,7 +123,7 @@ public class SsaTranslation {
                 case DIV -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case MOD -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 default ->
-                    throw new IllegalArgumentException("not a binary expression operator " + binaryOperationTree.operatorType());
+                        throw new IllegalArgumentException("not a binary expression operator " + binaryOperationTree.operatorType());
             };
             popSpan();
             return Optional.of(res);
@@ -150,6 +150,7 @@ public class SsaTranslation {
                 Node rhs = declarationTree.initializer().accept(this, data).orElseThrow();
                 data.writeVariable(declarationTree.name().name(), data.currentBlock(), rhs);
             }
+            // TODO: Check whether this results in issues, then remove general recursive parsing of DeclarationTrees
             //visit the new additional statements
             for (StatementTree statement : declarationTree.statements()) {
                 statement.accept(this, data);
@@ -207,14 +208,21 @@ public class SsaTranslation {
             return Optional.of(res);
         }
 
-        //TODO: Implement
+        @Override
         public Optional<Node> visit(BitNotTree bitNotTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(bitNotTree);
+            Node node = bitNotTree.expression().accept(this, data).orElseThrow();
+            Node res = data.constructor.newBitXor(data.constructor.newConstInt(~0), node);
+            popSpan();
+            return Optional.of(res);
         }
 
-        //TODO: Implement
+        @Override
         public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(logNotTree);
+            Node node = logNotTree.expression().accept(this, data).orElseThrow();
+            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false), data.constructor.newConstBool(true));
+            return Optional.of(res);
         }
 
         @Override
@@ -237,28 +245,62 @@ public class SsaTranslation {
             throw new UnsupportedOperationException();
         }
 
-        //TODO: Implement
+
         @Override
         public Optional<Node> visit(SequentialStatementTree sequentialStatementTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(sequentialStatementTree);
+            sequentialStatementTree.statement().accept(this, data);
+            if (sequentialStatementTree.statement() instanceof ReturnTree) {
+                popSpan();
+                return NOT_AN_EXPRESSION;
+            }
+
+            for (StatementTree statement : sequentialStatementTree.statements()) {
+                statement.accept(this, data);
+                // skip everything after a return in a block
+                if (statement instanceof ReturnTree) {
+                    break;
+                }
+            }
+            popSpan();
+            return NOT_AN_EXPRESSION;
         }
 
-        //TODO: Implement
+        // TODO: Fix, we cannot expect nodes from else or if nodes -> different blocks ?
         @Override
         public Optional<Node> visit(IfTree ifTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(ifTree);
+            Node expression = ifTree.expression().accept(this, data).orElseThrow();
+            Node ifNode = ifTree.ifStatement().accept(this, data).orElseThrow();
+            Node res = data.constructor.newIf(expression, ifNode);
+            if (ifTree.elseStatement() != null) {
+                Node thenNode = ifTree.elseStatement().accept(this, data).orElseThrow();
+                res = data.constructor.newIfElse(expression, ifNode, thenNode);
+            }
+            popSpan();
+            return Optional.of(res);
         }
 
-        //TODO: Implement
+        // TODO: Fix, we cannot expect nodes from statement -> different block scopes ?
         @Override
         public Optional<Node> visit(WhileTree whileTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(whileTree);
+            Node cond = whileTree.expression().accept(this, data).orElseThrow();
+            Node block = whileTree.statement().accept(this, data).orElseThrow();
+            Node res = data.constructor.newWhile(cond, block);
+            popSpan();
+            return Optional.of(res);
         }
 
-        //TODO: Implement
         @Override
         public Optional<Node> visit(CondExprTree condExprTree, SsaTranslation data) {
-            return Optional.empty();
+            pushSpan(condExprTree);
+            Node cond = condExprTree.cond().accept(this, data).orElseThrow();
+            Node exp1 = condExprTree.exp1().accept(this, data).orElseThrow();
+            Node exp2 = condExprTree.exp2().accept(this, data).orElseThrow();
+            Node res = data.constructor.newConditional(cond, exp1, exp2);
+            popSpan();
+            return Optional.of(res);
         }
 
         private Node projResultDivMod(SsaTranslation data, Node divMod) {

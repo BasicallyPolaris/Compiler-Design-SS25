@@ -420,9 +420,7 @@ public class Parser {
             return new SequentialStatementTree(initialStatement, List.of(new WhileTree(conditionExpression, body)));
         }
 
-        return new
-
-                WhileTree(conditionExpression, body);
+        return new WhileTree(conditionExpression, body);
     }
 
     private static NameTree name(Identifier ident) {

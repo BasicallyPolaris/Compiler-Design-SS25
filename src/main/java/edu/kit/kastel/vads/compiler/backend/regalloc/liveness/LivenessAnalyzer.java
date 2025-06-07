@@ -175,6 +175,15 @@ public class LivenessAnalyzer {
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
             }
+            //TODO:
+            case CondExprNode condExprNode -> {
+            }
+            case IfElseNode ifElseNode -> {
+            }
+            case IfNode ifNode -> {
+            }
+            case WhileNode whileNode -> {
+            }
         }
     }
 }

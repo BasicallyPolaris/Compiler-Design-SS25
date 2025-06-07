@@ -25,6 +25,8 @@ public class TestMain {
 //            System.exit(3);
 //        }
 
+        System.out.println(~0);
+
         String inputString = "int main() {\n" +
                 "  int t = 5;\n" +
                 "  int x = t-4;\n" +

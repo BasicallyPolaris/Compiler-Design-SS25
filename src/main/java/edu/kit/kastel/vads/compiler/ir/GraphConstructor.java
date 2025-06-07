@@ -3,6 +3,7 @@ package edu.kit.kastel.vads.compiler.ir;
 import edu.kit.kastel.vads.compiler.ir.node.*;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
+import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,6 +37,7 @@ class GraphConstructor {
     public Node newAdd(Node left, Node right) {
         return this.optimizer.transform(new AddNode(currentBlock(), left, right));
     }
+
     public Node newSub(Node left, Node right) {
         return this.optimizer.transform(new SubNode(currentBlock(), left, right));
     }
@@ -84,6 +86,10 @@ class GraphConstructor {
         return this.optimizer.transform(new ExclOrNode(currentBlock(), left, right));
     }
 
+    public Node newConditional(Node left, Node middle, Node right) {
+        return this.optimizer.transform(new CondExprNode(currentBlock(), left, middle, right));
+    }
+
     public Node newBitOr(Node left, Node right) {
         return this.optimizer.transform(new BitOrNode(currentBlock(), left, right));
     }
@@ -112,6 +118,22 @@ class GraphConstructor {
         // always move const into start block, this allows better deduplication
         // and resultingly in better value numbering
         return this.optimizer.transform(new ConstIntNode(this.graph.startBlock(), value));
+    }
+
+    public Node newConstBool(boolean value) {
+        return this.optimizer.transform(new ConstBoolNode(this.graph.startBlock(), value));
+    }
+
+    public Node newIfElse(Node condition, Node thenBranch, Node elseBranch) {
+        return this.optimizer.transform(new IfElseNode(currentBlock(), condition, thenBranch, elseBranch));
+    }
+
+    public Node newIf(Node condition, Node thenBranch) {
+        return this.optimizer.transform(new IfNode(currentBlock(), condition, thenBranch));
+    }
+
+    public Node newWhile(Node condition, Node body) {
+        return this.optimizer.transform(new WhileNode(currentBlock(), condition, body));
     }
 
     public Node newSideEffectProj(Node node) {
@@ -176,6 +198,35 @@ class GraphConstructor {
         // as this is not a problem in Lab 1 and it is just
         // a simplification, we recommend to implement this
         // part yourself.
+        same = None;
+        for (Node op : phi.predecessors()) {
+            if (op.equals(same) || op.equals(phi)) {
+                //Self reference
+                continue;
+            }
+            if (same != None) {
+                //Phi merges with at least two values: not trivial
+                return phi;
+            }
+            same = op;
+        }
+        if (same == None) {
+            //Phi is unreachable or in the start block
+            same = new Undef();
+        }
+        //Remember all users except the phi itself
+        users = phi.users.remove(phi);
+        //Reroute all uses of phi to same and remove phy
+        phi.replaceBy(same);
+
+        //Try to recursively remove all phi users, which might have become trivial
+        for (User use : users) {
+            if (use.instanceOf(Phi)) {
+                tryRemoveTrivialPhi(use);
+            }
+        }
+        return same;
+
         return phi;
     }
 
