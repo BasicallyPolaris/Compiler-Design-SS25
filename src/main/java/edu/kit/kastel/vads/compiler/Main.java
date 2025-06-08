@@ -58,7 +58,6 @@ public class Main {
         //TODO: Remove Graphviz for jump debugging
         System.out.println(GraphVizPrinter.print(graphs.getFirst()));
 
-
         String assemblyCode = new CodeGenerator().generateCode(graphs);
         Path assemblyFile = Path.of(output + ".s");
 

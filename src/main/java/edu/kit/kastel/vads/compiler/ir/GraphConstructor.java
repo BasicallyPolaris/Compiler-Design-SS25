@@ -189,7 +189,6 @@ class GraphConstructor {
         return readVariableRecursive(variable, block);
     }
 
-
     private Node readVariableRecursive(Name variable, Block block) {
         Node val;
         if (!this.sealedBlocks.contains(block)) {
@@ -255,6 +254,11 @@ class GraphConstructor {
     void sealBlock(Block block) {
         for (Map.Entry<Name, Phi> entry : this.incompletePhis.getOrDefault(block, Map.of()).entrySet()) {
             addPhiOperands(entry.getKey(), entry.getValue());
+        }
+        // Handle incomplete side effect phis
+        Phi sideEffectPhi = this.incompleteSideEffectPhis.remove(block);
+        if (sideEffectPhi != null) {
+            addPhiOperands(sideEffectPhi);
         }
         this.sealedBlocks.add(block);
     }

@@ -20,24 +20,24 @@ import java.util.List;
 
 public class TestMain {
     public static void main(String[] args) throws IOException {
-//        if (args.length != 2) {
-//            System.err.println("Invalid arguments: Expected one input file and one output file");
-//            System.exit(3);
-//        }
+        // if (args.length != 2) {
+        // System.err.println("Invalid arguments: Expected one input file and one output
+        // file");
+        // System.exit(3);
+        // }
 
         System.out.println(~0);
 
         String inputString = "int main() {\n" +
-                "  int t = 5;\n" +
-                "  int x = t-4;\n" +
-                "  int a = x+x;\n" +
-                "  t = t+x;\n" +
-                "  int z = t-1;\n" +
-                "  return z;\n" +
+                "  int x = 5;\n" +
+                "  if (x > 0) {\n" +
+                "    x = x + 1;\n" +
+                "  }\n" +
+                "  return x;\n" +
                 "}";
 
-        //Path input = Path.of(args[0]);
-        //Path output = Path.of(args[1]);
+        // Path input = Path.of(args[0]);
+        // Path output = Path.of(args[1]);
         ProgramTree program = lexAndParse(inputString);
         try {
             new SemanticAnalysis(program).analyze();
@@ -52,13 +52,14 @@ public class TestMain {
             graphs.add(translation.translate());
         }
 
-        //System.out.println(GraphVizPrinter.print(graphs.getFirst()));
+        // System.out.println(GraphVizPrinter.print(graphs.getFirst()));
 
-        // TODO: generate assembly and invoke gcc instead of generating abstract assembly
+        // TODO: generate assembly and invoke gcc instead of generating abstract
+        // assembly
         String s = new CodeGenerator().generateCode(graphs);
 
         System.out.println("\n----- Input: -----\n" + inputString + "\n\n---- Output: -----\n" + s);
-        //Files.writeString(output, s);
+        // Files.writeString(output, s);
     }
 
     private static ProgramTree lexAndParse(String inputString) throws IOException {

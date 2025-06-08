@@ -9,10 +9,12 @@ import java.util.*;
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
 public class LivenessAnalyzer {
-    //1. Initialize LivenessLines Array with the information from the IR graph and AasmRegisterAllocator (temps)
-    //2. Use Liveness Rules exhaustively on livenesslines array
-    //3. Store liveness information in live-in field
-    //4. Create Mapping with the temps to their live-in-temps for the interference graph
+    // 1. Initialize LivenessLines Array with the information from the IR graph and
+    // AasmRegisterAllocator (temps)
+    // 2. Use Liveness Rules exhaustively on livenesslines array
+    // 3. Store liveness information in live-in field
+    // 4. Create Mapping with the temps to their live-in-temps for the interference
+    // graph
     private final IrGraph irGraph;
     private final Map<Node, Register> registers;
     public List<LivenessLine> livenessLines;
@@ -29,11 +31,13 @@ public class LivenessAnalyzer {
     }
 
     public void calculateLiveness() {
-        //Step 1: Use J-Rules Exhaustively
+        // Step 1: Use J-Rules Exhaustively
         generatePredicates();
-        //Step 2: Use K Rules exhaustively on the generated predicates to fill livenessline live-in information
+        // Step 2: Use K Rules exhaustively on the generated predicates to fill
+        // livenessline live-in information
         generateLivenessPredicates();
-        //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
+        // Step 3: Use Liveness Predicates to fill out Liveness information on the
+        // programm lines
         useLivenessPredicates();
     }
 
@@ -46,27 +50,27 @@ public class LivenessAnalyzer {
             for (int k = 0; k < livenessLines.size(); k++) {
                 LivenessLine currentLine = livenessLines.get(k);
                 switch (currentLine.operation) {
-                    //Rule J1
+                    // Rule J1
                     case Operation.BINARY_OP -> {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getLast()));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
-                    //Rule J2
+                    // Rule J2
                     case Operation.RETURN -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                     }
-                    //Rule J3
+                    // Rule J3
                     case Operation.ASSIGN -> {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
-                    //Rule J4
+                    // Rule J4
                     case Operation.GOTO -> {
                         livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
                     }
-                    //Rule J5
+                    // Rule J5
                     case Operation.CONDITIONAL_GOTO -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
@@ -74,11 +78,12 @@ public class LivenessAnalyzer {
                     }
                 }
             }
-            //If no predicates are added after iterating all lines, stop looking for predicates
+            // If no predicates are added after iterating all lines, stop looking for
+            // predicates
             if (predicatesCount == livenessPredicates.size()) {
                 stillChanging = false;
             }
-            //Else we set the new predicatescount for the next run
+            // Else we set the new predicatescount for the next run
             else {
                 predicatesCount = livenessPredicates.size();
             }
@@ -94,13 +99,15 @@ public class LivenessAnalyzer {
             Set<LivenessPredicate> livenessPredicates2 = new HashSet<>();
             for (LivenessPredicate predicate : livenessPredicates) {
                 switch (predicate.type) {
-                    //Rule J1
+                    // Rule J1
                     case LivenessPredicateType.USE -> {
                         livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
                     }
                     case LivenessPredicateType.SUCC -> {
                         for (LivenessPredicate pred : livenessPredicates) {
-                            if (pred.type == LivenessPredicateType.LIVE && pred.lineNumber == predicate.succLineNumber & !(livenessPredicates.contains(predicateGenerator.def(predicate.lineNumber, pred.parameter)))) {
+                            if (pred.type == LivenessPredicateType.LIVE
+                                    && pred.lineNumber == predicate.succLineNumber & !(livenessPredicates
+                                            .contains(predicateGenerator.def(predicate.lineNumber, pred.parameter)))) {
                                 livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, pred.parameter));
                             }
                         }
@@ -109,14 +116,15 @@ public class LivenessAnalyzer {
                     }
                 }
             }
-            //Add new Predicates to predicates set
+            // Add new Predicates to predicates set
             livenessPredicates.addAll(livenessPredicates2);
 
-            //If no predicates are added after iterating all lines, stop looking for predicates
+            // If no predicates are added after iterating all lines, stop looking for
+            // predicates
             if (predicatesCount == livenessPredicates.size()) {
                 stillChanging = false;
             }
-            //Else we set the new predicatescount for the next run
+            // Else we set the new predicatescount for the next run
             else {
                 predicatesCount = livenessPredicates.size();
             }
@@ -147,7 +155,8 @@ public class LivenessAnalyzer {
                 List<Register> params = new ArrayList<>();
                 params.add(registers.get(predecessorSkipProj(b, BinaryOperationNode.LEFT)));
                 params.add(registers.get(predecessorSkipProj(b, BinaryOperationNode.RIGHT)));
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.BINARY_OP, registers.get(b), params));
+                livenessLines
+                        .add(new AssignmentLivenessLine(lineCount++, Operation.BINARY_OP, registers.get(b), params));
             }
             case ReturnNode r -> {
                 List<Register> params = new ArrayList<>();
@@ -155,29 +164,36 @@ public class LivenessAnalyzer {
                 livenessLines.add(new NoAssignmentLivenessLine(lineCount++, Operation.RETURN, params));
             }
             case ConstIntNode c -> {
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
+                livenessLines
+                        .add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
             }
             case ConstBoolNode b -> {
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
+                livenessLines
+                        .add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
             }
-//          TODO: Implement Jump & CondJump Nodes
-//            case JumpNode j -> {
-//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.GOTO, List.of(), JUMP TARGET (HOW TO FIND IN THE IR TREE?));
-//            }
-//            case CondJumpNode cj -> {
-//                List<Register> params = new ArrayList<>();
-//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.LEFT)));
-//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.RIGHT)));
-//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.CONDITIONAL_GOTO, params, JUMP TARGET (HOW TO FIND IN THE IR TREE?)));
-//            }
+            // TODO: Implement Jump & CondJump Nodes
+            // case JumpNode j -> {
+            // livenessLines.add(new JumpLivenessLine(lineCount++, Operation.GOTO,
+            // List.of(), JUMP TARGET (HOW TO FIND IN THE IR TREE?));
+            // }
+            // case CondJumpNode cj -> {
+            // List<Register> params = new ArrayList<>();
+            // params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.LEFT)));
+            // params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.RIGHT)));
+            // livenessLines.add(new JumpLivenessLine(lineCount++,
+            // Operation.CONDITIONAL_GOTO, params, JUMP TARGET (HOW TO FIND IN THE IR
+            // TREE?)));
+            // }
 
             case Phi _ -> {
-                throw new UnsupportedOperationException("phi");
+                // Phi nodes should be eliminated before reaching this point
+                // For now, skip them to avoid crashes
+                // TODO: Implement proper phi elimination
             }
-            case Block _, ProjNode _, StartNode _ -> {
+            case Block _,ProjNode _,StartNode _ -> {
                 // do nothing, skip line break
             }
-            //TODO:
+            // TODO:
             case CondExprNode condExprNode -> {
             }
             case IfElseNode ifElseNode -> {

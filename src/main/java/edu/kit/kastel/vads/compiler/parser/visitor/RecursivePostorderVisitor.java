@@ -131,22 +131,51 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         return r;
     }
 
-
     @Override
     public R visit(TypeTree typeTree, T data) {
         return this.visitor.visit(typeTree, data);
     }
 
-    //TODO: Implement missing cases
     @Override
     public R visit(IfTree ifTree, T data) {
-        return null;
+        T currentData = data;
+        R lastResult;
+
+        // 1. Visit condition
+        lastResult = ifTree.condition().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 2. Visit then statement
+        lastResult = ifTree.thenStatement().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 3. Visit else statement (if it exists)
+        if (ifTree.elseStatement() != null) {
+            lastResult = ifTree.elseStatement().accept(this, currentData);
+            currentData = accumulate(currentData, lastResult);
+        }
+
+        // 4. Visit the IfTree node itself
+        lastResult = this.visitor.visit(ifTree, currentData);
+        return lastResult;
     }
 
-    //TODO: Implement missing cases
     @Override
     public R visit(WhileTree whileTree, T data) {
-        return null;
+        T currentData = data;
+        R lastResult;
+
+        // 1. Visit condition
+        lastResult = whileTree.condition().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 2. Visit body
+        lastResult = whileTree.body().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 3. Visit the WhileTree node itself
+        lastResult = this.visitor.visit(whileTree, currentData);
+        return lastResult;
     }
 
     @Override
@@ -183,7 +212,24 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
 
     @Override
     public R visit(CondExprTree condExprTree, T data) {
-        return null;
+        T currentData = data;
+        R lastResult;
+
+        // 1. Visit condition
+        lastResult = condExprTree.cond().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 2. Visit first expression
+        lastResult = condExprTree.exp1().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 3. Visit second expression
+        lastResult = condExprTree.exp2().accept(this, currentData);
+        currentData = accumulate(currentData, lastResult);
+
+        // 4. Visit the CondExprTree node itself
+        lastResult = this.visitor.visit(condExprTree, currentData);
+        return lastResult;
     }
 
     protected T accumulate(T data, R value) {

@@ -33,7 +33,8 @@ public class Parser {
     }
 
     private FunctionTree parseFunction() {
-        //TODO (In Lab 3: Function should not expect int as default-return if other returns are possible)
+        // TODO (In Lab 3: Function should not expect int as default-return if other
+        // returns are possible)
         Keyword returnType = this.tokenSource.expectKeyword(KeywordType.INT);
         Identifier identifier = this.tokenSource.expectIdentifier();
         this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
@@ -49,8 +50,7 @@ public class Parser {
         return new FunctionTree(
                 new TypeTree(BasicType.INT, returnType.span()),
                 name(identifier),
-                body
-        );
+                body);
     }
 
     private BlockTree parseBlock() {
@@ -77,6 +77,8 @@ public class Parser {
             statement = parseFor();
         } else if (this.tokenSource.peek().isKeyword(KeywordType.IF)) {
             statement = parseIf();
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.BRACE_OPEN)) {
+            statement = parseBlock();
         } else {
             statement = parseSimple();
         }
@@ -87,7 +89,8 @@ public class Parser {
         return parseDeclaration(basicType, expectedSeparator, true);
     }
 
-    private StatementTree parseDeclaration(BasicType basicType, SeparatorType expectedSeparator, boolean shouldParseRecursively) {
+    private StatementTree parseDeclaration(BasicType basicType, SeparatorType expectedSeparator,
+            boolean shouldParseRecursively) {
         Keyword type = this.tokenSource.expectKeyword(basicType.getKeywordType());
         Identifier ident = this.tokenSource.expectIdentifier();
         ExpressionTree expr = null;
@@ -97,7 +100,8 @@ public class Parser {
         }
         this.tokenSource.expectSeparator(expectedSeparator);
 
-        // To get the scope, parse all further statements as in scope statements of this declaration
+        // To get the scope, parse all further statements as in scope statements of this
+        // declaration
         List<StatementTree> statements = new ArrayList<>();
         if (shouldParseRecursively) {
             while (!(this.tokenSource.peek() instanceof Separator sep && sep.type() == SeparatorType.BRACE_CLOSE)) {
@@ -116,7 +120,8 @@ public class Parser {
         LValueTree lValue = parseLValue();
         Operator assignmentOperator = parseAssignmentOperator();
         ExpressionTree expression = parseExpression();
-        if (expectSeparator) this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
+        if (expectSeparator)
+            this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
 
         return new AssignmentTree(lValue, assignmentOperator, expression);
     }
@@ -125,7 +130,7 @@ public class Parser {
         if (this.tokenSource.peek() instanceof Operator op) {
             return switch (op.type()) {
                 case ASSIGN, ASSIGN_DIV, ASSIGN_MINUS, ASSIGN_MOD, ASSIGN_MUL, ASSIGN_PLUS, ASSIGN_BIT_OR,
-                     ASSIGN_BIT_AND, ASSIGN_BIT_XOR, ASSIGN_BIT_SHIFT_LEFT, ASSIGN_BIT_SHIFT_RIGHT -> {
+                        ASSIGN_BIT_AND, ASSIGN_BIT_XOR, ASSIGN_BIT_SHIFT_LEFT, ASSIGN_BIT_SHIFT_RIGHT -> {
                     this.tokenSource.consume();
                     yield op;
                 }
@@ -256,7 +261,8 @@ public class Parser {
         ExpressionTree lhs = parseExpressionShifts();
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
-                    && (type == OperatorType.LESS || type == OperatorType.LESS_EQUAL || type == OperatorType.MORE || type == OperatorType.MORE_EQUAL)) {
+                    && (type == OperatorType.LESS || type == OperatorType.LESS_EQUAL || type == OperatorType.MORE
+                            || type == OperatorType.MORE_EQUAL)) {
                 this.tokenSource.consume();
                 lhs = new BinaryOperationTree(lhs, parseExpressionShifts(), type);
             } else {
@@ -358,7 +364,7 @@ public class Parser {
     private StatementTree parseWhile() {
         this.tokenSource.expectKeyword(KeywordType.WHILE);
         this.tokenSource.expectSeparator(SeparatorType.PAREN_OPEN);
-        //TODO: How to force data types (in this case: bool) for expressions
+        // TODO: How to force data types (in this case: bool) for expressions
         ExpressionTree expression = parseExpression();
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
         BlockTree body = parseBlock();
@@ -378,7 +384,8 @@ public class Parser {
             initialStatement = parseDeclaration(BasicType.INT, SeparatorType.SEMICOLON, false);
         } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
             initialStatement = parseDeclaration(BasicType.BOOL, SeparatorType.SEMICOLON, false);
-        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN) || this.tokenSource.peek() instanceof Identifier) {
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN)
+                || this.tokenSource.peek() instanceof Identifier) {
             initialStatement = parseSimple();
         } else {
             this.tokenSource.expectSeparator(SeparatorType.SEMICOLON);
@@ -393,7 +400,8 @@ public class Parser {
             incrementStatement = parseDeclaration(BasicType.INT, SeparatorType.PAREN_CLOSE, false);
         } else if (this.tokenSource.peek().isKeyword(KeywordType.BOOL)) {
             incrementStatement = parseDeclaration(BasicType.BOOL, SeparatorType.PAREN_CLOSE, false);
-        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN) || this.tokenSource.peek() instanceof Identifier) {
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.PAREN_OPEN)
+                || this.tokenSource.peek() instanceof Identifier) {
             incrementStatement = parseSimple(false);
         }
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
@@ -409,8 +417,7 @@ public class Parser {
         }
 
         // If it's a declaration, return the nested DeclarationTree as ForLoop
-        if (initialStatement instanceof
-                DeclarationTree initialDeclarationTree) {
+        if (initialStatement instanceof DeclarationTree initialDeclarationTree) {
             initialDeclarationTree.statements().addFirst(new WhileTree(conditionExpression, body));
             return initialDeclarationTree;
         }

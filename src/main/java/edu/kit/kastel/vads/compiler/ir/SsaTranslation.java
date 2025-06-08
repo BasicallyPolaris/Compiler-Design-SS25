@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.ir.node.Block;
 import edu.kit.kastel.vads.compiler.ir.node.DivNode;
 import edu.kit.kastel.vads.compiler.ir.node.ModNode;
 import edu.kit.kastel.vads.compiler.ir.node.Node;
+import edu.kit.kastel.vads.compiler.ir.node.Phi;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
 import edu.kit.kastel.vads.compiler.ir.util.DebugInfo;
 import edu.kit.kastel.vads.compiler.ir.util.DebugInfoHelper;
@@ -12,8 +13,11 @@ import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 
 /// SSA translation as described in
@@ -35,6 +39,8 @@ public class SsaTranslation {
     public IrGraph translate() {
         var visitor = new SsaTranslationVisitor();
         this.function.accept(visitor, this);
+        // Simple phi elimination: replace all phi nodes with their first operand
+        eliminatePhis();
         return this.constructor.graph();
     }
 
@@ -48,6 +54,52 @@ public class SsaTranslation {
 
     private Block currentBlock() {
         return this.constructor.currentBlock();
+    }
+
+    private void eliminatePhis() {
+        // Collect all phi nodes in the graph
+        Set<Phi> phiNodes = new HashSet<>();
+        Set<Node> visited = new HashSet<>();
+        collectPhiNodes(this.constructor.graph().endBlock(), visited, phiNodes);
+
+        // Replace each phi node with its first operand (simple strategy)
+        for (Phi phi : phiNodes) {
+            if (!phi.predecessors().isEmpty()) {
+                Node replacement = phi.predecessor(0);
+                replacePhiWithNode(phi, replacement);
+            }
+        }
+    }
+
+    private void collectPhiNodes(Node node, Set<Node> visited, Set<Phi> phiNodes) {
+        if (!visited.add(node)) {
+            return;
+        }
+
+        if (node instanceof Phi phi) {
+            phiNodes.add(phi);
+        }
+
+        for (Node predecessor : node.predecessors()) {
+            collectPhiNodes(predecessor, visited, phiNodes);
+        }
+    }
+
+    private void replacePhiWithNode(Phi phi, Node replacement) {
+        // Find all nodes that use this phi and replace the phi with the replacement
+        Set<Node> users = new HashSet<>(phi.graph().successors(phi));
+
+        for (Node user : users) {
+            for (int i = 0; i < user.predecessors().size(); i++) {
+                if (user.predecessor(i) == phi) {
+                    user.setPredecessor(i, replacement);
+                }
+            }
+        }
+
+        // The phi node should now be disconnected from the graph
+        // (no successors pointing to it, and we don't need to remove its predecessors
+        // since they might be used by other nodes)
     }
 
     private static class SsaTranslationVisitor implements Visitor<SsaTranslation, Optional<Node>> {
@@ -82,7 +134,7 @@ public class SsaTranslation {
                 case ASSIGN_MOD -> (lhs, rhs) -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 case ASSIGN -> null;
                 default ->
-                        throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
+                    throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
             };
 
             switch (assignmentTree.lValue()) {
@@ -123,7 +175,8 @@ public class SsaTranslation {
                 case DIV -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case MOD -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 default ->
-                        throw new IllegalArgumentException("not a binary expression operator " + binaryOperationTree.operatorType());
+                    throw new IllegalArgumentException(
+                            "not a binary expression operator " + binaryOperationTree.operatorType());
             };
             popSpan();
             return Optional.of(res);
@@ -150,8 +203,9 @@ public class SsaTranslation {
                 Node rhs = declarationTree.initializer().accept(this, data).orElseThrow();
                 data.writeVariable(declarationTree.name().name(), data.currentBlock(), rhs);
             }
-            // TODO: Check whether this results in issues, then remove general recursive parsing of DeclarationTrees
-            //visit the new additional statements
+            // TODO: Check whether this results in issues, then remove general recursive
+            // parsing of DeclarationTrees
+            // visit the new additional statements
             for (StatementTree statement : declarationTree.statements()) {
                 statement.accept(this, data);
                 // skip everything after a return in a block
@@ -221,7 +275,9 @@ public class SsaTranslation {
         public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
             pushSpan(logNotTree);
             Node node = logNotTree.expression().accept(this, data).orElseThrow();
-            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false), data.constructor.newConstBool(true));
+            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false),
+                    data.constructor.newConstBool(true));
+            popSpan();
             return Optional.of(res);
         }
 
@@ -244,7 +300,6 @@ public class SsaTranslation {
         public Optional<Node> visit(TypeTree typeTree, SsaTranslation data) {
             throw new UnsupportedOperationException();
         }
-
 
         @Override
         public Optional<Node> visit(SequentialStatementTree sequentialStatementTree, SsaTranslation data) {
@@ -402,6 +457,5 @@ public class SsaTranslation {
             return data.constructor.newResultProj(divMod);
         }
     }
-
 
 }
