@@ -29,6 +29,22 @@ class GraphConstructor {
         sealBlock(this.currentBlock);
     }
 
+    public Block newBlock() {
+        return new Block(this.graph);
+    }
+
+    public void setCurrentBlock(Block block) {
+        this.currentBlock = block;
+    }
+
+    public Node newCondJump(Node condition, Block trueBlock, Block falseBlock) {
+        return this.optimizer.transform(new CondJumpNode(currentBlock(), condition, trueBlock, falseBlock));
+    }
+
+    public Node newJump(Block target) {
+        return new JumpNode(currentBlock(), target);
+    }
+
     public Node newStart() {
         assert currentBlock() == this.graph.startBlock() : "start must be in start block";
         return new StartNode(currentBlock());
@@ -118,6 +134,10 @@ class GraphConstructor {
         // always move const into start block, this allows better deduplication
         // and resultingly in better value numbering
         return this.optimizer.transform(new ConstIntNode(this.graph.startBlock(), value));
+    }
+
+    public Node newUndef() {
+        return this.optimizer.transform(new UndefinedNode(this.graph.startBlock()));
     }
 
     public Node newConstBool(boolean value) {
@@ -282,5 +302,4 @@ class GraphConstructor {
         }
         return tryRemoveTrivialPhi(phi);
     }
-
 }

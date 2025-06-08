@@ -223,10 +223,13 @@ public class YCompPrinter {
             case ReturnNode _ -> VcgColor.CONTROL_FLOW;
             case StartNode _ -> VcgColor.CONTROL_FLOW;
             //TODO:
-            case CondExprNode condExprNode -> null;
-            case IfElseNode ifElseNode -> null;
-            case IfNode ifNode -> null;
-            case WhileNode whileNode -> null;
+            case CondExprNode _ -> VcgColor.NORMAL;
+            case IfElseNode _ -> VcgColor.NORMAL;
+            case IfNode _ -> VcgColor.NORMAL;
+            case WhileNode _ -> VcgColor.NORMAL;
+            case JumpNode _ -> VcgColor.NORMAL;
+            case CondJumpNode _ -> VcgColor.NORMAL;
+            case UndefinedNode _ -> VcgColor.NORMAL;
         };
     }
 

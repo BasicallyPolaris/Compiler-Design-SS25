@@ -3,11 +3,11 @@ package edu.kit.kastel.vads.compiler.parser.ast;
 import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
-public record WhileTree(ExpressionTree expression, StatementTree statement) implements StatementTree {
+public record WhileTree(ExpressionTree condition, StatementTree body) implements StatementTree {
 
     @Override
     public Span span() {
-        return expression.span().merge(statement.span());
+        return condition.span().merge(body.span());
     }
 
     @Override

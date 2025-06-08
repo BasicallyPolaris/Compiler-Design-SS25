@@ -266,30 +266,118 @@ public class SsaTranslation {
             return NOT_AN_EXPRESSION;
         }
 
-        // TODO: Fix, we cannot expect nodes from else or if nodes -> different blocks ?
         @Override
         public Optional<Node> visit(IfTree ifTree, SsaTranslation data) {
             pushSpan(ifTree);
-            Node expression = ifTree.expression().accept(this, data).orElseThrow();
-            Node ifNode = ifTree.ifStatement().accept(this, data).orElseThrow();
-            Node res = data.constructor.newIf(expression, ifNode);
-            if (ifTree.elseStatement() != null) {
-                Node thenNode = ifTree.elseStatement().accept(this, data).orElseThrow();
-                res = data.constructor.newIfElse(expression, ifNode, thenNode);
+
+            // Evaluate condition in current block
+            Node condition = ifTree.condition().accept(this, data).orElseThrow();
+
+            // Create blocks for then, else (if exists), and merge
+            Block thenBlock = data.constructor.newBlock();
+            Block elseBlock = ifTree.elseStatement() != null ? data.constructor.newBlock() : null;
+            Block mergeBlock = data.constructor.newBlock();
+
+            // Create conditional jump from current block
+            Block falseTarget = elseBlock != null ? elseBlock : mergeBlock;
+            Node condJump = data.constructor.newCondJump(condition, thenBlock, falseTarget);
+            thenBlock.addPredecessor(condJump);
+            falseTarget.addPredecessor(condJump);
+
+            // Process then branch
+            data.constructor.setCurrentBlock(thenBlock);
+            ifTree.thenStatement().accept(this, data);
+
+            // Jump to merge block (unless there was a return)
+            if (!endsWithReturn(ifTree.thenStatement())) {
+                Node jumpToMerge = data.constructor.newJump(mergeBlock);
+                mergeBlock.addPredecessor(jumpToMerge);
             }
+
+            // Process else branch if it exists
+            if (ifTree.elseStatement() != null) {
+                data.constructor.setCurrentBlock(elseBlock);
+                ifTree.elseStatement().accept(this, data);
+
+                // Jump to merge block (unless there was a return)
+                if (!endsWithReturn(ifTree.elseStatement())) {
+                    Node jumpToMerge = data.constructor.newJump(mergeBlock);
+                    mergeBlock.addPredecessor(jumpToMerge);
+                }
+            }
+
+            // Seal the processed blocks
+            data.constructor.sealBlock(thenBlock);
+            if (elseBlock != null) {
+                data.constructor.sealBlock(elseBlock);
+            }
+
+            // Continue with merge block
+            data.constructor.setCurrentBlock(mergeBlock);
+            data.constructor.sealBlock(mergeBlock);
+
             popSpan();
-            return Optional.of(res);
+            return NOT_AN_EXPRESSION;
         }
 
-        // TODO: Fix, we cannot expect nodes from statement -> different block scopes ?
         @Override
         public Optional<Node> visit(WhileTree whileTree, SsaTranslation data) {
             pushSpan(whileTree);
-            Node cond = whileTree.expression().accept(this, data).orElseThrow();
-            Node block = whileTree.statement().accept(this, data).orElseThrow();
-            Node res = data.constructor.newWhile(cond, block);
+
+            // Create blocks for loop header, body, and exit
+            Block headerBlock = data.constructor.newBlock();
+            Block bodyBlock = data.constructor.newBlock();
+            Block exitBlock = data.constructor.newBlock();
+
+            // Jump to header block
+            Node jumpToHeader = data.constructor.newJump(headerBlock);
+            headerBlock.addPredecessor(jumpToHeader);
+
+            // Switch to header block and evaluate condition
+            data.constructor.setCurrentBlock(headerBlock);
+            Node condition = whileTree.condition().accept(this, data).orElseThrow();
+
+            // Create conditional jump: true goes to body, false goes to exit
+            Node condJump = data.constructor.newCondJump(condition, bodyBlock, exitBlock);
+            bodyBlock.addPredecessor(condJump);
+            exitBlock.addPredecessor(condJump);
+
+            // Process loop body
+            data.constructor.setCurrentBlock(bodyBlock);
+            whileTree.body().accept(this, data);
+
+            // Jump back to header (unless there was a return)
+            if (!endsWithReturn(whileTree.body())) {
+                Node jumpBackToHeader = data.constructor.newJump(headerBlock);
+                headerBlock.addPredecessor(jumpBackToHeader);
+            }
+
+            // Seal the body block
+            data.constructor.sealBlock(bodyBlock);
+
+            // Now we can seal the header block (it has all predecessors)
+            data.constructor.sealBlock(headerBlock);
+
+            // Continue with exit block
+            data.constructor.setCurrentBlock(exitBlock);
+            data.constructor.sealBlock(exitBlock);
+
             popSpan();
-            return Optional.of(res);
+            return NOT_AN_EXPRESSION;
+        }
+
+        // Helper method to check if a statement ends with a return
+        private boolean endsWithReturn(StatementTree statement) {
+            if (statement instanceof ReturnTree) {
+                return true;
+            }
+            if (statement instanceof BlockTree blockTree) {
+                var statements = blockTree.statements();
+                if (!statements.isEmpty()) {
+                    return endsWithReturn(statements.getLast());
+                }
+            }
+            return false;
         }
 
         @Override

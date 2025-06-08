@@ -299,7 +299,8 @@ public class CodeGenerator {
 //                    .append(secondParameterOnStack);
 //        }
     }
-    private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2)  {
+
+    private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
         if (!reg1.equals(reg2)) {
             builder.append("\n").repeat(" ", 2).append("movl ")
                     .append(reg1)
