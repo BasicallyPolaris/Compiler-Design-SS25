@@ -189,6 +189,7 @@ public class LivenessAnalyzer {
                 // Phi nodes should be eliminated before reaching this point
                 // For now, skip them to avoid crashes
                 // TODO: Implement proper phi elimination
+                throw new UnsupportedOperationException("phi");
             }
             case Block _,ProjNode _,StartNode _ -> {
                 // do nothing, skip line break
