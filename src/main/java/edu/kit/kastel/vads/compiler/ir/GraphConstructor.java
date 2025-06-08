@@ -194,40 +194,42 @@ class GraphConstructor {
     }
 
     Node tryRemoveTrivialPhi(Phi phi) {
-        // TODO: the paper shows how to remove trivial phis.
-        // as this is not a problem in Lab 1 and it is just
-        // a simplification, we recommend to implement this
-        // part yourself.
-        same = None;
+        Node same = null;
         for (Node op : phi.predecessors()) {
-            if (op.equals(same) || op.equals(phi)) {
-                //Self reference
-                continue;
+            if (op == same || op == phi) {
+                continue; // unique value or self-reference
             }
-            if (same != None) {
-                //Phi merges with at least two values: not trivial
-                return phi;
+            if (same != null) {
+                return phi; // the phi merges at least two values: not trivial
             }
             same = op;
         }
-        if (same == None) {
-            //Phi is unreachable or in the start block
-            same = new Undef();
-        }
-        //Remember all users except the phi itself
-        users = phi.users.remove(phi);
-        //Reroute all uses of phi to same and remove phy
-        phi.replaceBy(same);
 
-        //Try to recursively remove all phi users, which might have become trivial
-        for (User use : users) {
-            if (use.instanceOf(Phi)) {
-                tryRemoveTrivialPhi(use);
+        if (same == null) {
+            same = this.newUndef(); // phi is unreachable or in the start block
+        }
+
+        // Remember all users except the phi itself
+        Set<Node> users = new HashSet<>(phi.graph().successors(phi));
+        users.remove(phi);
+
+        // Reroute all uses of phi to same and remove phi
+        for (Node use : users) {
+            for (int i = 0; i < use.predecessors().size(); i++) {
+                if (use.predecessor(i) == phi) {
+                    use.setPredecessor(i, same);
+                }
             }
         }
-        return same;
 
-        return phi;
+        // Try to recursively remove all phi users, which might have become trivial
+        for (Node use : users) {
+            if (use instanceof Phi) {
+                tryRemoveTrivialPhi((Phi) use);
+            }
+        }
+
+        return same;
     }
 
     void sealBlock(Block block) {

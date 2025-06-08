@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.*;
+import edu.kit.kastel.vads.compiler.ir.util.YCompPrinter;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,6 +16,7 @@ public class CodeGenerator {
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
         for (IrGraph graph : program) {
+            System.out.println(YCompPrinter.print(graph));
             AasmRegisterAllocator allocator = new AasmRegisterAllocator();
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
@@ -115,6 +117,12 @@ public class CodeGenerator {
             case IfNode ifNode -> {
             }
             case WhileNode whileNode -> {
+            }
+            case CondJumpNode condJumpNode -> {
+            }
+            case JumpNode jumpNode -> {
+            }
+            case UndefinedNode undefinedNode -> {
             }
         }
         builder.append("\n");
