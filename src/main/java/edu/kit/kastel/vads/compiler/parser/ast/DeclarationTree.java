@@ -4,13 +4,14 @@ import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public record DeclarationTree(TypeTree type, NameTree name, @Nullable ExpressionTree initializer,
                               List<StatementTree> statements) implements StatementTree {
 
     public DeclarationTree {
-        statements = List.copyOf(statements);
+        statements = new ArrayList<StatementTree>(statements);
     }
 
     @Override
@@ -23,7 +24,7 @@ public record DeclarationTree(TypeTree type, NameTree name, @Nullable Expression
         }
 
         for (StatementTree statement : statements) {
-            return baseSpan.merge(statement.span());
+            baseSpan = baseSpan.merge(statement.span());
         }
 
         return baseSpan;

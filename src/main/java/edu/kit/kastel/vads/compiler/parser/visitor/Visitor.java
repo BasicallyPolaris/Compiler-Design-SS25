@@ -42,4 +42,6 @@ public interface Visitor<T, R> {
     R visit(BitNotTree bitNotTree, T data);
 
     R visit(CondExprTree condExprTree, T data);
+
+    R visit(BoolLiteralTree boolLiteralTree, T data);
 }

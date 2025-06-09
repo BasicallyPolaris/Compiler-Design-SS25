@@ -190,6 +190,14 @@ public class SsaTranslation {
         }
 
         @Override
+        public Optional<Node> visit(BoolLiteralTree boolLiteralTree, SsaTranslation data) {
+            pushSpan(boolLiteralTree);
+            Node node = data.constructor.newConstBool(boolLiteralTree.parseValue());
+            popSpan();
+            return Optional.of(node);
+        }
+
+        @Override
         public Optional<Node> visit(LValueIdentTree lValueIdentTree, SsaTranslation data) {
             return NOT_AN_EXPRESSION;
         }
@@ -222,6 +230,7 @@ public class SsaTranslation {
             pushSpan(logNotTree);
             Node node = logNotTree.expression().accept(this, data).orElseThrow();
             Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false), data.constructor.newConstBool(true));
+            popSpan();
             return Optional.of(res);
         }
 
@@ -288,6 +297,7 @@ public class SsaTranslation {
             data.constructor.setCurrentBlock(thenBlock);
             ifTree.thenStatement().accept(this, data);
 
+
             // Jump to merge block (unless there was a return)
             if (!endsWithReturn(ifTree.thenStatement())) {
                 Node jumpToMerge = data.constructor.newJump(mergeBlock);
@@ -317,7 +327,7 @@ public class SsaTranslation {
             data.constructor.sealBlock(mergeBlock);
 
             popSpan();
-            return NOT_AN_EXPRESSION;
+            return Optional.of(condition);
         }
 
         @Override

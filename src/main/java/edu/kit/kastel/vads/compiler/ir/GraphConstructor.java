@@ -38,7 +38,7 @@ class GraphConstructor {
     }
 
     public Node newCondJump(Node condition, Block trueBlock, Block falseBlock) {
-        return this.optimizer.transform(new CondJumpNode(currentBlock(), condition, trueBlock, falseBlock));
+        return new CondJumpNode(currentBlock(), condition, trueBlock, falseBlock);
     }
 
     public Node newJump(Block target) {
@@ -248,7 +248,6 @@ class GraphConstructor {
                 tryRemoveTrivialPhi((Phi) use);
             }
         }
-
         return same;
     }
 

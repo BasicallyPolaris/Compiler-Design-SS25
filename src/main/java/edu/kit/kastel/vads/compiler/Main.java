@@ -40,7 +40,7 @@ public class Main {
             System.exit(7);
             return;
         }
-        //System.out.println(print(program));
+        System.out.println(print(program));
         List<IrGraph> graphs = new ArrayList<>();
         for (FunctionTree function : program.topLevelTrees()) {
             SsaTranslation translation = new SsaTranslation(function, new LocalValueNumbering());

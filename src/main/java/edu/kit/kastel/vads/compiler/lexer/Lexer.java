@@ -57,12 +57,10 @@ public class Lexer {
                     lessOrMoreShift(OperatorType.MORE, OperatorType.BIT_SHIFT_RIGHT, OperatorType.ASSIGN_BIT_SHIFT_RIGHT);
             default -> {
                 if (isBoolean()) {
-
+                    yield lexBool();
                 } else if (isIdentifierChar(peek())) {
                     if (isNumeric(peek())) {
                         yield lexNumber();
-                    } else if (isBoolean()) {
-                        yield lexBool();
                     }
                     yield lexIdentifierOrKeyword();
                 }

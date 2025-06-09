@@ -1,15 +1,9 @@
 package edu.kit.kastel.vads.compiler.parser;
 
-import edu.kit.kastel.vads.compiler.lexer.Identifier;
-import edu.kit.kastel.vads.compiler.lexer.Keyword;
-import edu.kit.kastel.vads.compiler.lexer.KeywordType;
-import edu.kit.kastel.vads.compiler.lexer.NumberLiteral;
-import edu.kit.kastel.vads.compiler.lexer.Operator;
+import edu.kit.kastel.vads.compiler.lexer.*;
 import edu.kit.kastel.vads.compiler.lexer.Operator.OperatorType;
-import edu.kit.kastel.vads.compiler.lexer.Separator;
 import edu.kit.kastel.vads.compiler.lexer.Separator.SeparatorType;
 import edu.kit.kastel.vads.compiler.Span;
-import edu.kit.kastel.vads.compiler.lexer.Token;
 import edu.kit.kastel.vads.compiler.parser.ast.*;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 import edu.kit.kastel.vads.compiler.parser.type.BasicType;
@@ -77,6 +71,8 @@ public class Parser {
             statement = parseFor();
         } else if (this.tokenSource.peek().isKeyword(KeywordType.IF)) {
             statement = parseIf();
+        } else if (this.tokenSource.peek().isSeparator(SeparatorType.BRACE_OPEN)) {
+            statement = parseBlock();
         } else {
             statement = parseSimple();
         }
@@ -331,6 +327,10 @@ public class Parser {
             case NumberLiteral(String value, int base, Span span) -> {
                 this.tokenSource.consume();
                 yield new LiteralTree(value, base, span);
+            }
+            case BooleanLiteral(String value, Span span) -> {
+                this.tokenSource.consume();
+                yield new BoolLiteralTree(value, span);
             }
             case Token t -> throw new ParseException("invalid factor " + t);
         };
