@@ -62,9 +62,11 @@ public class CodeGenerator {
     }
 
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
-        for (Node predecessor : node.predecessors()) {
-            if (visited.add(predecessor)) {
-                scan(predecessor, visited, builder, registers, spilledRegisterCount);
+        if (!(node instanceof Phi)) {
+            for (Node predecessor : node.predecessors()) {
+                if (visited.add(predecessor)) {
+                    scan(predecessor, visited, builder, registers, spilledRegisterCount);
+                }
             }
         }
 
@@ -103,183 +105,204 @@ public class CodeGenerator {
                     .append(", ")
                     .append(registers.get(b));
 
-            case Phi _ -> throw new UnsupportedOperationException("phi");
-            case Block _, ProjNode _, StartNode _ -> {
-                // do nothing, skip line break
-                return;
-            }
-            //TODO
-            case CondExprNode condExprNode -> {
-            }
-            case CondJumpNode condJumpNode -> {
-            }
-            case JumpNode jumpNode -> {
-            }
-            case UndefinedNode undefinedNode -> {
+            case Phi p -> {
+                boolean onlySideEffects = p
+                        .predecessors()
+                        .stream()
+                        .allMatch(
+                                pred -> pred instanceof ProjNode && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
+                        );
+
+                if (onlySideEffects) break;
+
+                for (int i = 0; i < p.block().predecessors().size(); i++) {
+                    scan(p.block().predecessors().get(i), visited, builder, registers, spilledRegisterCount);
+                    // Do we have to set the predecessors block ?
+                    scan(p.predecessors().get(i), visited, builder, registers, spilledRegisterCount);
+                }
+
+                builder.append("PHI NODE - ").append(registers.get(p));
+
+                for (Node pred : p.predecessors()) {
+                    builder.append(", ").append(registers.get(pred));
             }
         }
+        case Block _, ProjNode _, StartNode _ -> {
+            // do nothing, skip line break
+            return;
+        }
+        //TODO
+        case CondExprNode condExprNode -> {
+        }
+        case CondJumpNode condJumpNode -> {
+        }
+        case JumpNode jumpNode -> {
+        }
+        case UndefinedNode undefinedNode -> {
+        }
+    }
         builder.append("\n");
+}
+
+private static void binary(
+        StringBuilder builder,
+        Map<Node, PhysicalRegister> registers,
+        BinaryOperationNode node
+) {
+    PhysicalRegister target = registers.get(node);
+    PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
+    PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+    PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
+    PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
+    boolean spillSource = false;
+    boolean spillTarget = target.register == X86_64Register.SPILL;
+
+    if (secondParameter.register == X86_64Register.SPILL) {
+        spillSource = true;
     }
 
-    private static void binary(
-            StringBuilder builder,
-            Map<Node, PhysicalRegister> registers,
-            BinaryOperationNode node
-    ) {
-        PhysicalRegister target = registers.get(node);
-        PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
-        PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
-        PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
-        PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
-        boolean spillSource = false;
-        boolean spillTarget = target.register == X86_64Register.SPILL;
+    //Move spilled Target in R14 and use R14 as the new second parameter
+    if (spillSource) {
+        builder.repeat(" ", 2).append("movl ")
+                .append(secondParameter)
+                .append(", ")
+                .append(spillRegSource)
+                .append("\n");
+        secondParameter = spillRegSource;
+    }
 
-        if (secondParameter.register == X86_64Register.SPILL) {
-            spillSource = true;
-        }
-
-        //Move spilled Target in R14 and use R14 as the new second parameter
-        if (spillSource) {
-            builder.repeat(" ", 2).append("movl ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(spillRegSource)
-                    .append("\n");
-            secondParameter = spillRegSource;
-        }
-
-        //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
-        if (spillTarget) {
+    //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
+    if (spillTarget) {
 //            builder.repeat(" ", 2).append("movl ")
 //                    .append(target)
 //                    .append(", ")
 //                    .append(spillRegDest)
 //                    .append("\n");
-            target = spillRegDest;
-        }
+        target = spillRegDest;
+    }
 
-        //Move first parameter into target register for binop
-        if (!firstParameter.equals(target)) {
+    //Move first parameter into target register for binop
+    if (!firstParameter.equals(target)) {
+        builder.repeat(" ", 2).append("movl ")
+                .append(firstParameter)
+                .append(", ")
+                .append(target)
+                .append("\n");
+    }
+
+    switch (node) {
+        case AddNode _ -> builder.repeat(" ", 2).append("addl ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case SubNode _ -> builder.repeat(" ", 2).append("subl ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case MulNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        //TODO: How to handle the boolean results for the conditional jumps? Maybe use the info from the AST
+        case LessNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case LeqNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case MoreNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case MeqNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case EqualNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case NotEqualNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case LogicAndNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case LogicOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case BitAndNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case ExclOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case BitOrNode _ -> builder.repeat(" ", 2).append("imull ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        //TODO: Tricky shift details? See Lab 2 Notes and Hints
+        case LShiftNode _ -> builder.repeat(" ", 2).append("sall ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case RShiftNode _ -> builder.repeat(" ", 2).append("sarl ")
+                .append(secondParameter)
+                .append(", ")
+                .append(target);
+        case DivNode _ -> {
+            // First, clear EDX
+            builder.repeat(" ", 2).append("xorl %edx, %edx\n");
+            // Move the left operand to EAX
             builder.repeat(" ", 2).append("movl ")
                     .append(firstParameter)
-                    .append(", ")
-                    .append(target)
+                    .append(", %eax\n");
+            builder.repeat(" ", 2).append("cltd\n");
+            // Perform the division
+            builder.repeat(" ", 2).append("idivl ")
+                    .append(secondParameter)
                     .append("\n");
+            // Move the result from EAX to the destination register
+            builder.repeat(" ", 2).append("movl %eax, ")
+                    .append(target);
         }
-
-        switch (node) {
-            case AddNode _ -> builder.repeat(" ", 2).append("addl ")
+        case ModNode _ -> {
+            // First, clear EDX
+            builder.repeat(" ", 2).append("xorl %edx, %edx\n");
+            // Move the left operand to EAX
+            builder.repeat(" ", 2).append("movl ")
+                    .append(firstParameter)
+                    .append(", %eax\n");
+            builder.repeat(" ", 2).append("cltd\n");
+            // Perform the division
+            builder.repeat(" ", 2).append("idivl ")
                     .append(secondParameter)
-                    .append(", ")
+                    .append("\n");
+            // Move the remainder from EDX to the destination register
+            builder.repeat(" ", 2).append("movl %edx, ")
                     .append(target);
-            case SubNode _ -> builder.repeat(" ", 2).append("subl ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case MulNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            //TODO: How to handle the boolean results for the conditional jumps? Maybe use the info from the AST
-            case LessNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case LeqNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case MoreNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case MeqNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case EqualNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case NotEqualNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case LogicAndNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case LogicOrNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case BitAndNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case ExclOrNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case BitOrNode _ -> builder.repeat(" ", 2).append("imull ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            //TODO: Tricky shift details? See Lab 2 Notes and Hints
-            case LShiftNode _ -> builder.repeat(" ", 2).append("sall ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case RShiftNode _ -> builder.repeat(" ", 2).append("sarl ")
-                    .append(secondParameter)
-                    .append(", ")
-                    .append(target);
-            case DivNode _ -> {
-                // First, clear EDX
-                builder.repeat(" ", 2).append("xorl %edx, %edx\n");
-                // Move the left operand to EAX
-                builder.repeat(" ", 2).append("movl ")
-                        .append(firstParameter)
-                        .append(", %eax\n");
-                builder.repeat(" ", 2).append("cltd\n");
-                // Perform the division
-                builder.repeat(" ", 2).append("idivl ")
-                        .append(secondParameter)
-                        .append("\n");
-                // Move the result from EAX to the destination register
-                builder.repeat(" ", 2).append("movl %eax, ")
-                        .append(target);
-            }
-            case ModNode _ -> {
-                // First, clear EDX
-                builder.repeat(" ", 2).append("xorl %edx, %edx\n");
-                // Move the left operand to EAX
-                builder.repeat(" ", 2).append("movl ")
-                        .append(firstParameter)
-                        .append(", %eax\n");
-                builder.repeat(" ", 2).append("cltd\n");
-                // Perform the division
-                builder.repeat(" ", 2).append("idivl ")
-                        .append(secondParameter)
-                        .append("\n");
-                // Move the remainder from EDX to the destination register
-                builder.repeat(" ", 2).append("movl %edx, ")
-                        .append(target);
-            }
-            default ->
-                    throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
         }
-        //Write back from R15 to the Stack
-        if (spillTarget) {
-            PhysicalRegister targetOnStack = registers.get(node);
-            if (!spillRegDest.equals(targetOnStack)) {
-                builder.append("\n").repeat(" ", 2).append("movl ")
-                        .append(spillRegDest)
-                        .append(", ")
-                        .append(targetOnStack);
-            }
+        default ->
+                throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
+    }
+    //Write back from R15 to the Stack
+    if (spillTarget) {
+        PhysicalRegister targetOnStack = registers.get(node);
+        if (!spillRegDest.equals(targetOnStack)) {
+            builder.append("\n").repeat(" ", 2).append("movl ")
+                    .append(spillRegDest)
+                    .append(", ")
+                    .append(targetOnStack);
         }
-        //Write back from R14 to Stack (Parameter is not changed so doesn't need to be written back)
+    }
+    //Write back from R14 to Stack (Parameter is not changed so doesn't need to be written back)
 //        if (spillSource) {
 //            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
 //            builder.append("\n").repeat(" ", 2).append("movl ")
@@ -287,14 +310,14 @@ public class CodeGenerator {
 //                    .append(", ")
 //                    .append(secondParameterOnStack);
 //        }
-    }
+}
 
-    private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
-        if (!reg1.equals(reg2)) {
-            builder.append("\n").repeat(" ", 2).append("movl ")
-                    .append(reg1)
-                    .append(", ")
-                    .append(reg2);
-        }
+private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
+    if (!reg1.equals(reg2)) {
+        builder.append("\n").repeat(" ", 2).append("movl ")
+                .append(reg1)
+                .append(", ")
+                .append(reg2);
     }
+}
 }

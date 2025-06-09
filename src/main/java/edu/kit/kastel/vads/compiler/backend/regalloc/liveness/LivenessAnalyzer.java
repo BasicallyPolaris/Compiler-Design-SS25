@@ -16,6 +16,7 @@ public class LivenessAnalyzer {
     private final IrGraph irGraph;
     private final Map<Node, Register> registers;
     public List<LivenessLine> livenessLines;
+    public Map<Node, Integer> nodeLineNumbers;
     private int lineCount;
     private final Set<LivenessPredicate> livenessPredicates;
 
@@ -23,6 +24,7 @@ public class LivenessAnalyzer {
         this.irGraph = graph;
         this.registers = registers;
         this.lineCount = 0;
+        this.nodeLineNumbers = new IdentityHashMap<>();
         this.livenessLines = new ArrayList<>();
         fillLivenessInformation();
         this.livenessPredicates = new HashSet<>();
@@ -35,6 +37,8 @@ public class LivenessAnalyzer {
         generateLivenessPredicates();
         //Step 3: Use Liveness Predicates to fill out Liveness information on the programm lines
         useLivenessPredicates();
+
+        debugPrintLivenessLines();
     }
 
     private void generatePredicates() {
@@ -63,12 +67,16 @@ public class LivenessAnalyzer {
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     //Rule J4
-                    case Operation.GOTO -> livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
+                    case Operation.GOTO -> {
+                        Node target = currentLine.jumpTarget;
+                        int lineNumber = nodeLineNumbers.get(target);
+                        livenessPredicates.add(predicateGenerator.succ(k, lineNumber));
+                    }
                     //Rule J5
                     case Operation.CONDITIONAL_GOTO -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
-                        livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
+                        livenessPredicates.add(predicateGenerator.succ(k, nodeLineNumbers.get(currentLine.jumpTarget)));
                     }
                 }
             }
@@ -91,6 +99,7 @@ public class LivenessAnalyzer {
         while (stillChanging) {
             Set<LivenessPredicate> livenessPredicates2 = new HashSet<>();
             for (LivenessPredicate predicate : livenessPredicates) {
+
                 switch (predicate.type) {
                     //Rule J1
                     case LivenessPredicateType.USE ->
@@ -134,57 +143,106 @@ public class LivenessAnalyzer {
     }
 
     private void scan(Node node, Set<Node> visited) {
-        for (Node predecessor : node.predecessors()) {
-            if (visited.add(predecessor)) {
-                scan(predecessor, visited);
+        if (!(node instanceof Phi)) {
+            for (Node predecessor : node.predecessors()) {
+                if (visited.add(predecessor)) {
+                    scan(predecessor, visited);
+                }
             }
         }
+
         switch (node) {
             case BinaryOperationNode b -> {
                 List<Register> params = new ArrayList<>();
                 params.add(registers.get(predecessorSkipProj(b, BinaryOperationNode.LEFT)));
                 params.add(registers.get(predecessorSkipProj(b, BinaryOperationNode.RIGHT)));
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.BINARY_OP, registers.get(b), params));
+                setNodeLineNumber(b);
+                livenessLines.add(new AssignmentLivenessLine(b, Operation.BINARY_OP, registers.get(b), params));
             }
             case ReturnNode r -> {
                 List<Register> params = new ArrayList<>();
                 params.add(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)));
-                livenessLines.add(new NoAssignmentLivenessLine(lineCount++, Operation.RETURN, params));
+                int lineNumber = lineCount++;
+                setNodeLineNumber(r);
+                livenessLines.add(new NoAssignmentLivenessLine(Operation.RETURN, params));
             }
-            case ConstIntNode c ->
-                    livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
-            case ConstBoolNode b ->
-                    livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
-//          TODO: Implement Jump & CondJump Nodes
-//            case JumpNode j -> {
-//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.GOTO, List.of(), JUMP TARGET (HOW TO FIND IN THE IR TREE?));
-//            }
-//            case CondJumpNode cj -> {
-//                List<Register> params = new ArrayList<>();
-//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.LEFT)));
-//                params.add(registers.get(predecessorSkipProj(cj, CondJumpNode.RIGHT)));
-//                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.CONDITIONAL_GOTO, params, JUMP TARGET (HOW TO FIND IN THE IR TREE?)));
-//            }
+            case ConstIntNode c -> {
+                setNodeLineNumber(c);
+                livenessLines.add(new AssignmentLivenessLine(c, Operation.ASSIGN, registers.get(c), List.of()));
+            }
+            case ConstBoolNode b -> {
+                setNodeLineNumber(b);
+                livenessLines.add(new AssignmentLivenessLine(b, Operation.ASSIGN, registers.get(b), List.of()));
+            }
+
+            case JumpNode j -> {
+                setNodeLineNumber(j);
+                Collection<Node> successors = irGraph.successors(j);
+                if (successors.isEmpty()) {
+                    // Handle the case where there are no successors
+                    // This might be a terminal jump or an error in graph construction
+                    throw new IllegalStateException("JumpNode has no successors: " + j);
+                }
+                Node successor = successors.iterator().next();
+                livenessLines.add(new JumpLivenessLine(j, Operation.GOTO, List.of(), successor));
+            }
+            case CondJumpNode cj -> {
+                List<Register> params = new ArrayList<>();
+                params.add(registers.get(cj.condition()));
+                setNodeLineNumber(cj);
+                livenessLines.add(new JumpLivenessLine(cj, Operation.CONDITIONAL_GOTO, params, irGraph.successors(cj).iterator().next()));
+            }
 
             case Phi p -> {
+//              assert p.block().predecessors().size() = p.predecessors();
+                boolean onlySideEffects = p
+                        .predecessors()
+                        .stream()
+                        .allMatch(
+                                pred -> pred instanceof ProjNode && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
+                        );
+
+                if (onlySideEffects) break;
+
                 List<Register> params = new ArrayList<>();
-                for (Node pred : p.predecessors()) {
-                    params.add(registers.get(pred));
+
+                for (int i = 0; i < p.block().predecessors().size(); i++) {
+                    scan(p.block().predecessors().get(i), visited);
+                    // Do we have to set the predecessors block ?
+                    scan(p.predecessors().get(i), visited);
+                    params.add(registers.get(p.predecessors().get(i)));
                 }
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.PHI_ASSIGN, registers.get(p), params));
+
+                setNodeLineNumber(p);
+                livenessLines.add(new AssignmentLivenessLine(p, Operation.PHI_ASSIGN, registers.get(p), params));
             }
-            case Block _, ProjNode _, StartNode _ -> {
+            case Block _, ProjNode _, StartNode _, UndefinedNode _ -> {
                 // do nothing, skip line break
             }
-            //TODO:
             case CondExprNode condExprNode -> {
             }
-            case CondJumpNode condJumpNode -> {
-            }
-            case JumpNode jumpNode -> {
-            }
-            case UndefinedNode undefinedNode -> {
-            }
+        }
+    }
+
+    private void setNodeLineNumber(Node node) {
+        int nodeLineNumber = lineCount++;
+        nodeLineNumbers.put(node, nodeLineNumber);
+
+        if (!nodeLineNumbers.containsKey(node.block())) {
+            nodeLineNumbers.put(node.block(), nodeLineNumber);
+            return;
+        }
+
+        int blockLineNumber = nodeLineNumbers.get(node.block());
+        if (blockLineNumber > nodeLineNumber) {
+            nodeLineNumbers.put(node.block(), nodeLineNumber);
+        }
+    }
+
+    private void debugPrintLivenessLines() {
+        System.out.println("\n Liveness lines:");
+        for (LivenessLine line : livenessLines) {
+            System.out.println(line);
         }
     }
 }

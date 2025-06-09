@@ -46,6 +46,10 @@ public class IrGraph {
         return this.endBlock;
     }
 
+    public Map<Node, SequencedSet<Node>> getSuccessors() {
+        return this.successors;
+    }
+
     /// {@return the name of this graph}
     public String name() {
         return name;

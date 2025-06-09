@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
+import edu.kit.kastel.vads.compiler.ir.node.Node;
 
 import java.util.Objects;
 
@@ -11,6 +12,7 @@ public class LivenessPredicate {
     public int lineNumber;
     public Register parameter;
     public int succLineNumber;
+    public Node succLineNode;
 
     @Override
     public boolean equals(Object o) {
@@ -22,6 +24,26 @@ public class LivenessPredicate {
     @Override
     public int hashCode() {
         return Objects.hash(type, lineNumber, parameter, succLineNumber);
+    }
+
+    public LivenessPredicate(LivenessPredicateType type, int lineNumber, Register parameter, Node succLineNode) {
+        this.type = type;
+        this.lineNumber = lineNumber;
+
+        switch (type) {
+            case LivenessPredicateType.LIVE, LivenessPredicateType.DEF, LivenessPredicateType.USE -> {
+                this.parameter = parameter;
+                // TODO: not elegant solution, maybe refactor
+                this.succLineNumber = -1;
+                this.succLineNode = null;
+            }
+            case LivenessPredicateType.SUCC -> {
+                // TODO: not elegant solution, maybe refactor
+                this.parameter = new VirtualRegister(-1);
+                this.succLineNode = succLineNode;
+                this.succLineNumber = -2;
+            }
+        }
     }
 
     //succLineNumber (and parameter) is -1 (or $-1) when not used by predicate

@@ -1,0 +1,11 @@
+int main() {
+  int a = 10;
+  int b = 20;
+  int c = 0;
+  if (1 + 1 == 2) {
+    c = a;
+  } else {
+    c = b;
+  }
+  return c;
+}

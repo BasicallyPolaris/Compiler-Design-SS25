@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.backend.regalloc.liveness;
 
 import edu.kit.kastel.vads.compiler.backend.aasm.VirtualRegister;
 import edu.kit.kastel.vads.compiler.backend.regalloc.Register;
+import edu.kit.kastel.vads.compiler.ir.node.Node;
 
 public class PredicateGenerator {
 
@@ -15,6 +16,10 @@ public class PredicateGenerator {
 
     public LivenessPredicate succ(int lineNumber, int succLineNumber) {
         return new LivenessPredicate(LivenessPredicateType.SUCC, lineNumber, new VirtualRegister(-1), succLineNumber );
+    }
+
+    public LivenessPredicate succ(int lineNumber, Node succLineNode) {
+        return new LivenessPredicate(LivenessPredicateType.SUCC, lineNumber, new VirtualRegister(-1), -1 );
     }
 
     public LivenessPredicate live(int lineNumber, Register register) {

@@ -9,15 +9,14 @@ import java.util.stream.Collectors;
 
 public final class NoAssignmentLivenessLine extends LivenessLine {
 
-    public NoAssignmentLivenessLine(int lineNumber, Operation operation, List<Register> parameters) {
-        this.lineNumber = lineNumber;
+    public NoAssignmentLivenessLine(Operation operation, List<Register> parameters) {
         this.operation = operation;
         this.parameters = parameters;
         this.liveInVariables = new HashSet<Register>();
+        this.jumpTarget = null;
 
         // TODO: not elegant solution, maybe refactor
         this.target =  new VirtualRegister(-1);
-        this.jumpTarget = -1;
     }
 
     @Override
@@ -25,6 +24,6 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
         String params = parameters.stream()
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
-        return lineNumber + ": " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
+        return operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
     }
 }

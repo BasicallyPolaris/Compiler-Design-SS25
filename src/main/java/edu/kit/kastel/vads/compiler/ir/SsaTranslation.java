@@ -233,10 +233,11 @@ public class SsaTranslation {
         public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
             pushSpan(logNotTree);
             Node node = logNotTree.expression().accept(this, data).orElseThrow();
-            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false),
+            // TODO: DECIDE HOW TO REMOVE / ACCEPT THE CONDITIONAL NODES WE ADD HERE ?
+            Node conditional = data.constructor.newConditional(node, data.constructor.newConstBool(false),
                     data.constructor.newConstBool(true));
             popSpan();
-            return Optional.of(res);
+            return Optional.of(conditional);
         }
 
         @Override

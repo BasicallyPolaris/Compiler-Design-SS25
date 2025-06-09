@@ -1,5 +1,6 @@
 package edu.kit.kastel.vads.compiler.parser;
 
+import com.sun.source.tree.ConditionalExpressionTree;
 import edu.kit.kastel.vads.compiler.lexer.*;
 import edu.kit.kastel.vads.compiler.lexer.Operator.OperatorType;
 import edu.kit.kastel.vads.compiler.lexer.Separator.SeparatorType;
@@ -314,7 +315,7 @@ public class Parser {
             }
             case Operator(var type, _) when type == OperatorType.LOG_NOT -> {
                 Span span = this.tokenSource.consume().span();
-                yield new LogNotTree(parseFactor(), span);
+                yield new CondExprTree(parseExpression(), new BoolLiteralTree("false", span), new BoolLiteralTree("true", span));
             }
             case Operator(var type, _) when type == OperatorType.BIT_NOT -> {
                 Span span = this.tokenSource.consume().span();
