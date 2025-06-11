@@ -77,8 +77,6 @@ public class Parser {
             statement = parseFor();
         } else if (this.tokenSource.peek().isKeyword(KeywordType.IF)) {
             statement = parseIf();
-        } else if (this.tokenSource.peek().isSeparator(SeparatorType.BRACE_OPEN)) {
-            statement = parseBlock();
         } else {
             statement = parseSimple();
         }
@@ -349,12 +347,25 @@ public class Parser {
         conditionExpression = parseExpression();
         this.tokenSource.expectSeparator(SeparatorType.PAREN_CLOSE);
 
-        StatementTree bodyIf = parseStatement();
+        StatementTree bodyIf;
+
+        if (this.tokenSource.peek().isSeparator(SeparatorType.BRACE_OPEN)) {
+            bodyIf = parseBlock();
+        } else {
+            bodyIf = parseStatement();
+        }
 
         // Check for else Statement
         if (this.tokenSource.peek().isKeyword(KeywordType.ELSE)) {
             this.tokenSource.consume();
-            StatementTree bodyElse = parseStatement();
+            StatementTree bodyElse;
+
+            if (this.tokenSource.peek().isSeparator(SeparatorType.BRACE_OPEN)) {
+                bodyElse = parseBlock();
+            } else {
+                bodyElse = parseStatement();
+            }
+
             return new IfTree(conditionExpression, bodyIf, bodyElse);
         } else {
             return new IfTree(conditionExpression, bodyIf, null);

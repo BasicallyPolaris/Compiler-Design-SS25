@@ -16,6 +16,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BinaryOperator;
@@ -62,13 +63,41 @@ public class SsaTranslation {
         Set<Node> visited = new HashSet<>();
         collectPhiNodes(this.constructor.graph().endBlock(), visited, phiNodes);
 
-        // Replace each phi node with its first operand (simple strategy)
-        for (Phi phi : phiNodes) {
-            if (!phi.predecessors().isEmpty()) {
-                Node replacement = phi.predecessor(0);
-                replacePhiWithNode(phi, replacement);
+        // Eliminate trivial phis iteratively
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            Iterator<Phi> iterator = phiNodes.iterator();
+            while (iterator.hasNext()) {
+                Phi phi = iterator.next();
+                Node replacement = tryRemoveTrivialPhi(phi);
+                if (replacement != null) {
+                    replacePhiWithNode(phi, replacement);
+                    iterator.remove();
+                    changed = true;
+                }
             }
         }
+    }
+
+    private Node tryRemoveTrivialPhi(Phi phi) {
+        Node same = null;
+        for (Node operand : phi.predecessors()) {
+            if (operand == same || operand == phi) {
+                continue; // Unique value or self-reference
+            }
+            if (same != null) {
+                return null; // The phi merges at least two values: not trivial
+            }
+            same = operand;
+        }
+
+        if (same == null) {
+            // The phi is unreachable or in the start block
+            same = this.constructor.newUndef();
+        }
+
+        return same;
     }
 
     private void collectPhiNodes(Node node, Set<Node> visited, Set<Phi> phiNodes) {
