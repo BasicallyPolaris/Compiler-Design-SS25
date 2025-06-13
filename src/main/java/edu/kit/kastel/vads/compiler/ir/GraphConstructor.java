@@ -172,6 +172,28 @@ class GraphConstructor {
         return new Phi(currentBlock());
     }
 
+    public void cleanupTrivialPhis() {
+        Set<Node> visited = new HashSet<>();
+        cleanupTrivialPhisRecursive(this.graph().endBlock(), visited);
+    }
+
+    private void cleanupTrivialPhisRecursive(Node node, Set<Node> visited) {
+        if (!visited.add(node)) {
+            return;
+        }
+
+        // Process predecessors first (post-order traversal)
+        for (Node pred : node.predecessors()) {
+            cleanupTrivialPhisRecursive(pred, visited);
+        }
+
+        // Try to remove trivial phi if this is a phi node
+        if (node instanceof Phi phi) {
+            tryRemoveTrivialPhi(phi);
+        }
+    }
+
+
     public IrGraph graph() {
         return this.graph;
     }
@@ -231,10 +253,6 @@ class GraphConstructor {
         // Remember all users except the phi itself
         Set<Node> users = new HashSet<>(phi.graph().successors(phi));
         users.remove(phi);
-
-        for (Node pred : phi.predecessors()) {
-            graph.removeSuccessor(pred, phi);
-        }
 
         // Reroute all uses of phi to same and remove phi
         for (Node use : users) {

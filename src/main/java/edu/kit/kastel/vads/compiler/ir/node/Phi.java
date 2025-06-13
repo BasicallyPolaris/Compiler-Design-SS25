@@ -11,6 +11,6 @@ public final class Phi extends Node {
 
     @Override
     protected String info() {
-        return this.graph().successors(this).toString();
+        return this.predecessors().toString();
     }
 }

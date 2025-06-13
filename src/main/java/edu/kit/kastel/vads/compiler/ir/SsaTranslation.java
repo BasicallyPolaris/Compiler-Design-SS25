@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.ir.node.Block;
 import edu.kit.kastel.vads.compiler.ir.node.DivNode;
 import edu.kit.kastel.vads.compiler.ir.node.ModNode;
 import edu.kit.kastel.vads.compiler.ir.node.Node;
+import edu.kit.kastel.vads.compiler.ir.node.Phi;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
 import edu.kit.kastel.vads.compiler.ir.util.DebugInfo;
 import edu.kit.kastel.vads.compiler.ir.util.DebugInfoHelper;
@@ -13,7 +14,9 @@ import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 
 /// SSA translation as described in
@@ -35,6 +38,7 @@ public class SsaTranslation {
     public IrGraph translate() {
         var visitor = new SsaTranslationVisitor();
         this.function.accept(visitor, this);
+        this.constructor.cleanupTrivialPhis();
         return this.constructor.graph();
     }
 
@@ -82,7 +86,7 @@ public class SsaTranslation {
                 case ASSIGN_MOD -> (lhs, rhs) -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 case ASSIGN -> null;
                 default ->
-                        throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
+                    throw new IllegalArgumentException("not an assignment operator " + assignmentTree.operator());
             };
 
             switch (assignmentTree.lValue()) {
@@ -123,7 +127,8 @@ public class SsaTranslation {
                 case DIV -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case MOD -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 default ->
-                        throw new IllegalArgumentException("not a binary expression operator " + binaryOperationTree.operatorType());
+                    throw new IllegalArgumentException(
+                            "not a binary expression operator " + binaryOperationTree.operatorType());
             };
             popSpan();
             return Optional.of(res);
@@ -150,8 +155,9 @@ public class SsaTranslation {
                 Node rhs = declarationTree.initializer().accept(this, data).orElseThrow();
                 data.writeVariable(declarationTree.name().name(), data.currentBlock(), rhs);
             }
-            // TODO: Check whether this results in issues, then remove general recursive parsing of DeclarationTrees
-            //visit the new additional statements
+            // TODO: Check whether this results in issues, then remove general recursive
+            // parsing of DeclarationTrees
+            // visit the new additional statements
             for (StatementTree statement : declarationTree.statements()) {
                 statement.accept(this, data);
                 // skip everything after a return in a block
@@ -229,7 +235,8 @@ public class SsaTranslation {
         public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
             pushSpan(logNotTree);
             Node node = logNotTree.expression().accept(this, data).orElseThrow();
-            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false), data.constructor.newConstBool(true));
+            Node res = data.constructor.newConditional(node, data.constructor.newConstBool(false),
+                    data.constructor.newConstBool(true));
             popSpan();
             return Optional.of(res);
         }
@@ -253,7 +260,6 @@ public class SsaTranslation {
         public Optional<Node> visit(TypeTree typeTree, SsaTranslation data) {
             throw new UnsupportedOperationException();
         }
-
 
         @Override
         public Optional<Node> visit(SequentialStatementTree sequentialStatementTree, SsaTranslation data) {
@@ -296,7 +302,6 @@ public class SsaTranslation {
             // Process then branch
             data.constructor.setCurrentBlock(thenBlock);
             ifTree.thenStatement().accept(this, data);
-
 
             // Jump to merge block (unless there was a return)
             if (!endsWithReturn(ifTree.thenStatement())) {
@@ -412,6 +417,5 @@ public class SsaTranslation {
             return data.constructor.newResultProj(divMod);
         }
     }
-
 
 }
