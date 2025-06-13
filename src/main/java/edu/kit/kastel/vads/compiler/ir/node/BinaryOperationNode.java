@@ -13,7 +13,7 @@ public sealed abstract class BinaryOperationNode extends Node permits AddNode, B
     }
 
     protected static int commutativeHashCode(BinaryOperationNode node) {
-        int h = node.block().hashCode();
+        int h = node.block().hashCode() * 31 + node.getClass().hashCode();
         // commutative operation: we want h(op(x, y)) == h(op(y, x))
         h += 31 * (predecessorHash(node, LEFT) ^ predecessorHash(node, RIGHT));
         return h;
@@ -24,6 +24,9 @@ public sealed abstract class BinaryOperationNode extends Node permits AddNode, B
             return false;
         }
         if (a.getClass() != b.getClass()) {
+            return false;
+        }
+        if (a.block() != b.block()) {
             return false;
         }
         if (a.predecessor(LEFT).hashCode() == b.predecessor(LEFT).hashCode() && a.predecessor(RIGHT).hashCode() == b.predecessor(RIGHT).hashCode()) {
@@ -39,12 +42,15 @@ public sealed abstract class BinaryOperationNode extends Node permits AddNode, B
             return false;
         }
         return obj.getClass() == this.getClass()
-            && this.predecessor(LEFT).hashCode() == binOp.predecessor(LEFT).hashCode()
-            && this.predecessor(RIGHT).hashCode() == binOp.predecessor(RIGHT).hashCode();
+                && block() == binOp.block()
+                && this.predecessor(LEFT).hashCode() == binOp.predecessor(LEFT).hashCode()
+                && this.predecessor(RIGHT).hashCode() == binOp.predecessor(RIGHT).hashCode();
     }
 
     @Override
     public int hashCode() {
-        return (predecessorHash(this, LEFT) * 31 + predecessorHash(this, RIGHT)) ^ this.getClass().hashCode();
+        int h = block().hashCode() * 31;
+        h += (predecessorHash(this, LEFT) * 31 + predecessorHash(this, RIGHT)) ^ this.getClass().hashCode();
+        return h;
     }
 }
