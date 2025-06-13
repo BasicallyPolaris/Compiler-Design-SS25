@@ -11,9 +11,4 @@ public final class JumpNode extends Node {
     public Block target() {
         return target;
     }
-
-    @Override
-    protected String info() {
-        return "-> " + target;
-    }
 }

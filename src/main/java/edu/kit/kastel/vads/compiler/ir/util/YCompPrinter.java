@@ -163,9 +163,10 @@ public class YCompPrinter {
             if (parent instanceof ReturnNode) {
                 // Return needs no label
                 result.add(formatControlflowEdge(parent, block, ""));
-            } else {
+            } else if (parent instanceof CondJumpNode || parent instanceof JumpNode) {
+                result.add(formatControlflowEdge(parent, block, ""));
+            } else
                 throw new RuntimeException("Unknown paren type: " + parent);
-            }
         }
 
         return result.toString();

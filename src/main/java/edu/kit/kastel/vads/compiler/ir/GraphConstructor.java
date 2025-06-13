@@ -232,6 +232,10 @@ class GraphConstructor {
         Set<Node> users = new HashSet<>(phi.graph().successors(phi));
         users.remove(phi);
 
+        for (Node pred : phi.predecessors()) {
+            graph.removeSuccessor(pred, phi);
+        }
+
         // Reroute all uses of phi to same and remove phi
         for (Node use : users) {
             for (int i = 0; i < use.predecessors().size(); i++) {

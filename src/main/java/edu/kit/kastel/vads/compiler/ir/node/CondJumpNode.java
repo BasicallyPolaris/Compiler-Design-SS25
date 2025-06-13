@@ -21,9 +21,4 @@ public final class CondJumpNode extends Node {
     public Block falseTarget() {
         return falseTarget;
     }
-
-    @Override
-    protected String info() {
-        return condition() + " ? " + trueTarget + " : " + falseTarget;
-    }
 }

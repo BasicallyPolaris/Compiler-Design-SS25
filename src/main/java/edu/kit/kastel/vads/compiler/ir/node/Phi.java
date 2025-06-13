@@ -8,4 +8,9 @@ public final class Phi extends Node {
     public void appendOperand(Node node) {
         addPredecessor(node);
     }
+
+    @Override
+    protected String info() {
+        return this.graph().successors(this).toString();
+    }
 }

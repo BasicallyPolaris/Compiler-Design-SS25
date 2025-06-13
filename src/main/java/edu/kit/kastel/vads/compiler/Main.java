@@ -15,7 +15,9 @@ import edu.kit.kastel.vads.compiler.parser.ast.ProgramTree;
 import edu.kit.kastel.vads.compiler.semantic.SemanticAnalysis;
 import edu.kit.kastel.vads.compiler.semantic.SemanticException;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,7 +57,22 @@ public class Main {
         }
 
         //TODO: Remove Graphviz for jump debugging
-        System.out.println(GraphVizPrinter.print(graphs.getFirst()));
+        String yCompOutputPath = "./test-code/run-output.vcg";
+        try (FileWriter fileWriter = new FileWriter(yCompOutputPath);
+             PrintWriter printWriter = new PrintWriter(fileWriter)) {
+
+            // Get the first graph from the list
+            if (!graphs.isEmpty()) {
+                // Print the output of YCompPrinter.print(graphs.getFirst()) to the file
+                printWriter.println(YCompPrinter.print(graphs.getFirst()));
+            } else {
+                System.out.println("No graphs available to print.");
+            }
+
+        } catch (IOException e) {
+            System.err.println("An error occurred while writing to the file: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         String assemblyCode = new CodeGenerator().generateCode(graphs);
         Path assemblyFile = Path.of(output + ".s");
