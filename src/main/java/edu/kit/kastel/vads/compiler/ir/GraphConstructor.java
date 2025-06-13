@@ -193,7 +193,6 @@ class GraphConstructor {
         }
     }
 
-
     public IrGraph graph() {
         return this.graph;
     }
@@ -209,7 +208,6 @@ class GraphConstructor {
         }
         return readVariableRecursive(variable, block);
     }
-
 
     private Node readVariableRecursive(Name variable, Block block) {
         Node val;
@@ -273,6 +271,9 @@ class GraphConstructor {
     }
 
     void sealBlock(Block block) {
+        if (this.sealedBlocks.contains(block)) {
+            return;
+        }
         for (Map.Entry<Name, Phi> entry : this.incompletePhis.getOrDefault(block, Map.of()).entrySet()) {
             addPhiOperands(entry.getKey(), entry.getValue());
         }

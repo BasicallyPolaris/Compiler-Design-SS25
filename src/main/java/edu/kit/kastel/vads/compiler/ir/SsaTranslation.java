@@ -332,7 +332,7 @@ public class SsaTranslation {
             data.constructor.sealBlock(mergeBlock);
 
             popSpan();
-            return Optional.of(condition);
+            return NOT_AN_EXPRESSION;
         }
 
         @Override

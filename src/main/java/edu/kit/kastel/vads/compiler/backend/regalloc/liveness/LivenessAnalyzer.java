@@ -171,8 +171,12 @@ public class LivenessAnalyzer {
 //                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.CONDITIONAL_GOTO, params, JUMP TARGET (HOW TO FIND IN THE IR TREE?)));
 //            }
 
-            case Phi _ -> {
-                throw new UnsupportedOperationException("phi");
+            case Phi p -> {
+                List<Register> params = new ArrayList<>();
+                for (Node pred : p.predecessors()) {
+                    params.add(registers.get(pred));
+                }
+                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.PHI_ASSIGN, registers.get(p), params));
             }
             case Block _, ProjNode _, StartNode _ -> {
                 // do nothing, skip line break

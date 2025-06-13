@@ -6,4 +6,5 @@ public enum Operation {
     RETURN,
     GOTO,
     CONDITIONAL_GOTO,
+    PHI_ASSIGN,
 }
