@@ -164,12 +164,35 @@ public class CodeGenerator {
                     builder.append( block.blockName() + ":");
                     builder.append("\n");}
             }
-            //TODO
+
             case CondExprNode condExprNode -> {
             }
             case CondJumpNode condJumpNode -> {
+                //TODO: end label to avoid infinite loops
+                //TODO: compare needs a register, currently as null (why??)
+                //Check condition
+                PhysicalRegister condition = registers.get(condJumpNode.predecessors().getFirst());
+                builder.repeat(" ", 2)
+                        .append("cmp ")
+                        .append(condition)
+                        .append(", $1")
+                        .append("\n");
+                //Jump if true
+                builder.repeat(" ", 2)
+                        .append("je ")
+                        .append(condJumpNode.trueTarget().blockName())
+                        .append("\n");
+                //Jump if false
+                builder.repeat(" ", 2)
+                        .append("jmp ")
+                        .append(condJumpNode.falseTarget().blockName())
+                        .append("\n");
             }
             case JumpNode jumpNode -> {
+                builder.repeat(" ", 2)
+                        .append("jmp ")
+                        .append(jumpNode.target().blockName())
+                        .append("\n");
             }
             case UndefinedNode undefinedNode -> {
             }
