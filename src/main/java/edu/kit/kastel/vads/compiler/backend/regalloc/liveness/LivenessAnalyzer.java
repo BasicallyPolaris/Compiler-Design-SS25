@@ -66,6 +66,12 @@ public class LivenessAnalyzer {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
+                    case Operation.PHI_ASSIGN -> {
+                        for (Register p: currentLine.parameters)
+                        livenessPredicates.add(predicateGenerator.use(k, p));
+                        livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
+                        livenessPredicates.add(predicateGenerator.succ(k, k + 1));
+                    }
                     //Rule J4
                     case Operation.GOTO -> {
                         Node target = currentLine.jumpTarget;
@@ -199,12 +205,14 @@ public class LivenessAnalyzer {
                         .predecessors()
                         .stream()
                         .allMatch(
-                                pred -> pred instanceof ProjNode && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
+                                pred -> pred instanceof ProjNode &&
+                                        ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
                         );
 
                 if (onlySideEffects) break;
 
                 List<Register> params = new ArrayList<>();
+                //TODO: Maybe traverse block predecessors only  if the phi has no other predecessors to solve case with mutliple phis in single block??
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
                     scan(p.block().predecessors().get(i), visited);
@@ -216,10 +224,8 @@ public class LivenessAnalyzer {
                 setNodeLineNumber(p);
                 livenessLines.add(new AssignmentLivenessLine(p, Operation.PHI_ASSIGN, registers.get(p), params));
             }
-            case Block _, ProjNode _, StartNode _, UndefinedNode _ -> {
+            case Block _, ProjNode _, StartNode _, UndefinedNode _, CondExprNode _-> {
                 // do nothing, skip line break
-            }
-            case CondExprNode condExprNode -> {
             }
         }
     }

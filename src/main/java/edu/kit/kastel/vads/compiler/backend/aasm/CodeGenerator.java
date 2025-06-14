@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
 public class CodeGenerator {
+    int labelCounter = 0;
 
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
@@ -76,12 +77,12 @@ public class CodeGenerator {
             case MulNode mul -> binary(builder, registers, mul);
             case DivNode div -> binary(builder, registers, div);
             case ModNode mod -> binary(builder, registers, mod);
-            case LessNode less -> binary(builder, registers, less);
-            case LeqNode leq -> binary(builder, registers, leq);
-            case MoreNode more -> binary(builder, registers, more);
-            case MeqNode meq -> binary(builder, registers, meq);
-            case EqualNode eq -> binary(builder, registers, eq);
-            case NotEqualNode neq -> binary(builder, registers, neq);
+            case LessNode less -> comparison(builder, registers, less);
+            case LeqNode leq -> comparison(builder, registers, leq);
+            case MoreNode more -> comparison(builder, registers, more);
+            case MeqNode meq -> comparison(builder, registers, meq);
+            case EqualNode eq -> comparison(builder, registers, eq);
+            case NotEqualNode neq -> comparison(builder, registers, neq);
             case LogicAndNode lAnd -> binary(builder, registers, lAnd);
             case LogicOrNode lOr -> binary(builder, registers, lOr);
             case BitAndNode and -> binary(builder, registers, and);
@@ -99,11 +100,19 @@ public class CodeGenerator {
                     .append(c.value())
                     .append(", ")
                     .append(registers.get(c));
-            case ConstBoolNode b -> builder.repeat(" ", 2)
+            case ConstBoolNode b -> {
+                String boolString;
+                if (b.value()) {
+                    boolString = "1";
+                } else {
+                    boolString = "0";
+                }
+                builder.repeat(" ", 2)
                     .append("movl $")
-                    .append(b.value())
+                    .append(boolString)
                     .append(", ")
                     .append(registers.get(b));
+            }
 
             case Phi p -> {
                 boolean onlySideEffects = p
@@ -125,24 +134,106 @@ public class CodeGenerator {
 
                 for (Node pred : p.predecessors()) {
                     builder.append(", ").append(registers.get(pred));
+                }
+            }
+            case Block _, ProjNode _, StartNode _ -> {
+                // do nothing, skip line break
+                return;
+            }
+            //TODO
+            case CondExprNode condExprNode -> {
+            }
+            case CondJumpNode condJumpNode -> {
+            }
+            case JumpNode jumpNode -> {
+            }
+            case UndefinedNode undefinedNode -> {
             }
         }
-        case Block _, ProjNode _, StartNode _ -> {
-            // do nothing, skip line break
-            return;
+        builder.append("\n");
+    }
+
+    private void comparison(StringBuilder builder,
+                            Map<Node, PhysicalRegister> registers,
+                            BinaryOperationNode node
+    ) {
+        PhysicalRegister target = registers.get(node);
+        PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
+        PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+        PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
+        PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
+        boolean spillSource = false;
+        boolean spillTarget = target.register == X86_64Register.SPILL;
+
+        if (secondParameter.register == X86_64Register.SPILL) {
+            spillSource = true;
         }
-        //TODO
-        case CondExprNode condExprNode -> {
+
+        //Move spilled Target in R14 and use R14 as the new second parameter
+        if (spillSource) {
+            builder.repeat(" ", 2).append("movl ")
+                    .append(secondParameter)
+                    .append(", ")
+                    .append(spillRegSource)
+                    .append("\n");
+            secondParameter = spillRegSource;
         }
-        case CondJumpNode condJumpNode -> {
+
+        //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
+        if (spillTarget) {
+//            builder.repeat(" ", 2).append("movl ")
+//                    .append(target)
+//                    .append(", ")
+//                    .append(spillRegDest)
+//                    .append("\n");
+            target = spillRegDest;
         }
-        case JumpNode jumpNode -> {
+
+        //Move first parameter into target register for binop
+//        if (!firstParameter.equals(target)) {
+//            builder.repeat(" ", 2).append("movl ")
+//                    .append(firstParameter)
+//                    .append(", ")
+//                    .append(target)
+//                    .append("\n");
+//        }
+        switch (node) {
+            case LessNode _ -> {
+                writeCompareAssembly("jl ", builder, firstParameter, secondParameter, target);
+            }
+            case LeqNode _ -> {
+                writeCompareAssembly("jle ", builder, firstParameter, secondParameter, target);
+            }
+            case MoreNode _ -> {
+                writeCompareAssembly("jg ", builder, firstParameter, secondParameter, target);
+            }
+            case MeqNode _ -> {
+                writeCompareAssembly("jge ", builder, firstParameter, secondParameter, target);
+            }
+            case EqualNode _ -> {
+                writeCompareAssembly("je ", builder, firstParameter, secondParameter, target);
+            }
+            case NotEqualNode _ -> {
+                writeCompareAssembly("jne ", builder, firstParameter, secondParameter, target);
+            }
+            default ->
+                    throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
         }
-        case UndefinedNode undefinedNode -> {
+
+        if (spillTarget) {
+            PhysicalRegister targetOnStack = registers.get(node);
+            if (!spillRegDest.equals(targetOnStack)) {
+                builder.append("\n").repeat(" ", 2).append("movl ")
+                        .append(spillRegDest)
+                        .append(", ")
+                        .append(targetOnStack);
+            }
         }
     }
-        builder.append("\n");
-}
+
+
+
+
 
 private static void binary(
         StringBuilder builder,
@@ -203,48 +294,25 @@ private static void binary(
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
-        //TODO: How to handle the boolean results for the conditional jumps? Maybe use the info from the AST
-        case LessNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
-        case LeqNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
-        case MoreNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
-        case MeqNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
-        case EqualNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
-        case NotEqualNode _ -> builder.repeat(" ", 2).append("imull ")
-                .append(secondParameter)
-                .append(", ")
-                .append(target);
+        //Logical And is like a multiplication of bools (which are 0(false) or >0 (true)
         case LogicAndNode _ -> builder.repeat(" ", 2).append("imull ")
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
-        case LogicOrNode _ -> builder.repeat(" ", 2).append("imull ")
+        //Logical And is like an addition of bools (which are 0(false) or >0 (true)
+        case LogicOrNode _ -> builder.repeat(" ", 2).append("addl ")
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
-        case BitAndNode _ -> builder.repeat(" ", 2).append("imull ")
+        case BitAndNode _ -> builder.repeat(" ", 2).append("and ")
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
-        case ExclOrNode _ -> builder.repeat(" ", 2).append("imull ")
+        case ExclOrNode _ -> builder.repeat(" ", 2).append("xor ")
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
-        case BitOrNode _ -> builder.repeat(" ", 2).append("imull ")
+        case BitOrNode _ -> builder.repeat(" ", 2).append("or ")
                 .append(secondParameter)
                 .append(", ")
                 .append(target);
@@ -312,12 +380,39 @@ private static void binary(
 //        }
 }
 
-private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
-    if (!reg1.equals(reg2)) {
-        builder.append("\n").repeat(" ", 2).append("movl ")
-                .append(reg1)
+//private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
+//    if (!reg1.equals(reg2)) {
+//        builder.append("\n").repeat(" ", 2).append("movl ")
+//                .append(reg1)
+//                .append(", ")
+//                .append(reg2);
+//    }
+//}
+
+    private void writeCompareAssembly(String comparison, StringBuilder builder, PhysicalRegister firstParameter, PhysicalRegister secondParameter, PhysicalRegister target) {
+        String trueLabel = "label_" + labelCounter++ + ":";
+        String falseLabel = "label_" + labelCounter++ + ":";
+        builder.repeat(" ", 2).append("cmp ")
+                .append(firstParameter)
                 .append(", ")
-                .append(reg2);
+                .append(secondParameter)
+                .append("\n")
+                .append(comparison)
+                .append(trueLabel)
+                .append("\n")
+                .append("movl ")
+                .append(target)
+                .append(", ")
+                .append("0")
+                .append("\n")
+                .append("jmp ")
+                .append(falseLabel)
+                .append("\n");
+        builder.append(trueLabel).append("\n");
+        builder.repeat(" ", 2).append("movl ")
+                .append(target)
+                .append(", ")
+                .append("1");
+        builder.append(falseLabel).append("\n");
     }
-}
 }
