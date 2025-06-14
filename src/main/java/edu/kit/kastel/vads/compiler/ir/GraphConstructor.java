@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.ir;
 
 import edu.kit.kastel.vads.compiler.ir.node.*;
 import edu.kit.kastel.vads.compiler.ir.optimize.Optimizer;
+import edu.kit.kastel.vads.compiler.parser.ast.FunctionTree;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 
 import java.util.HashMap;
@@ -18,6 +19,7 @@ class GraphConstructor {
     private final Map<Block, Node> currentSideEffect = new HashMap<>();
     private final Map<Block, Phi> incompleteSideEffectPhis = new HashMap<>();
     private final Set<Block> sealedBlocks = new HashSet<>();
+    private final HashSet<String> blockNames = new HashSet<>();
     private Block currentBlock;
 
     public GraphConstructor(Optimizer optimizer, String name) {
@@ -28,8 +30,22 @@ class GraphConstructor {
         sealBlock(this.currentBlock);
     }
 
-    public Block newBlock() {
-        return new Block(this.graph);
+    public Block newBlock(FunctionTree functionTree, String name) {
+        return new Block(this.graph, newBlockName(functionTree, name));
+    }
+
+    private String newBlockName(FunctionTree functionTree, String name) {
+        String blockName = functionTree.name().name().asString() + "_" + name;
+
+        if (blockNames.contains(blockName)) {
+            int i = 0;
+            while (blockNames.contains(blockName + "_" + i)) {
+                i++;
+            };
+            blockName = blockName + "_" + i;
+        }
+        blockNames.add(blockName);
+        return blockName;
     }
 
     public void setCurrentBlock(Block block) {

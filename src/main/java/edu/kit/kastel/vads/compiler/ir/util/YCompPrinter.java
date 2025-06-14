@@ -249,6 +249,8 @@ public class YCompPrinter {
             return "start-block";
         } else if (node == this.graph.endBlock()) {
             return "end-block";
+        } else if (node instanceof Block block) {
+            return "block-" +block.blockName();
         }
         return node.toString();
     }

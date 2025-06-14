@@ -59,17 +59,35 @@ public class CodeGenerator {
 
     private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
         Set<Node> visited = new HashSet<>();
-        scan(graph.endBlock(), visited, builder, registers, spilledRegisterCount);
+        scan(graph.endBlock(), visited, builder, registers, spilledRegisterCount, graph);
     }
 
-    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
+    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount, IrGraph graph) {
+        //TODO: When is the right point of time to visit the blocks?
+        if (!visited.contains(node.block())) {
+            visited.add(node.block());
+            scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
+        }
         if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (visited.add(predecessor)) {
-                    scan(predecessor, visited, builder, registers, spilledRegisterCount);
+                    scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
                 }
             }
         }
+
+        //We need labels for blocks, but not for start or end blocks
+//        if (node instanceof Block & !(node == graph.endBlock() || node == graph.startBlock())) {
+//            //Create label with blockname
+//            builder.append(((Block) node).blockName() + ":");
+//            builder.append("\n");
+//            for (Node blockPredecessor : node.predecessors()) {
+//                if (visited.add(blockPredecessor)) {
+//                    scan(blockPredecessor, visited, builder, registers, spilledRegisterCount, graph);
+//                }
+//            }
+//        }
+
 
         switch (node) {
             case AddNode add -> binary(builder, registers, add);
@@ -125,9 +143,9 @@ public class CodeGenerator {
                 if (onlySideEffects) break;
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    scan(p.block().predecessors().get(i), visited, builder, registers, spilledRegisterCount);
+                    scan(p.block().predecessors().get(i), visited, builder, registers, spilledRegisterCount, graph);
                     // Do we have to set the predecessors block ?
-                    scan(p.predecessors().get(i), visited, builder, registers, spilledRegisterCount);
+                    scan(p.predecessors().get(i), visited, builder, registers, spilledRegisterCount, graph);
                 }
 
                 builder.append("PHI NODE - ").append(registers.get(p));
@@ -136,9 +154,15 @@ public class CodeGenerator {
                     builder.append(", ").append(registers.get(pred));
                 }
             }
-            case Block _, ProjNode _, StartNode _ -> {
+            case ProjNode _, StartNode _ -> {
                 // do nothing, skip line break
                 return;
+            }
+            case Block block -> {
+                if (!(node == graph.endBlock() || node == graph.startBlock())) {
+                    //Create label with blockname
+                    builder.append( block.blockName() + ":");
+                    builder.append("\n");}
             }
             //TODO
             case CondExprNode condExprNode -> {

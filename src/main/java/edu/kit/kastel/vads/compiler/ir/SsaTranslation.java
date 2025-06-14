@@ -288,9 +288,9 @@ public class SsaTranslation {
             Node condition = ifTree.condition().accept(this, data).orElseThrow();
 
             // Create blocks for then, else (if exists), and merge
-            Block thenBlock = data.constructor.newBlock();
-            Block elseBlock = ifTree.elseStatement() != null ? data.constructor.newBlock() : null;
-            Block mergeBlock = data.constructor.newBlock();
+            Block thenBlock = data.constructor.newBlock(data.function, "then");
+            Block elseBlock = ifTree.elseStatement() != null ? data.constructor.newBlock(data.function, "else") : null;
+            Block mergeBlock = data.constructor.newBlock(data.function, "merge");
 
             // Create conditional jump from current block
             Block falseTarget = elseBlock != null ? elseBlock : mergeBlock;
@@ -339,9 +339,9 @@ public class SsaTranslation {
             pushSpan(whileTree);
 
             // Create blocks for loop header, body, and exit
-            Block headerBlock = data.constructor.newBlock();
-            Block bodyBlock = data.constructor.newBlock();
-            Block exitBlock = data.constructor.newBlock();
+            Block headerBlock = data.constructor.newBlock(data.function, "header");
+            Block bodyBlock = data.constructor.newBlock(data.function, "body");
+            Block exitBlock = data.constructor.newBlock(data.function, "exit");
 
             // Jump to header block
             Node jumpToHeader = data.constructor.newJump(headerBlock);
@@ -402,9 +402,9 @@ public class SsaTranslation {
             Node condition = condExprTree.cond().accept(this, data).orElseThrow();
 
             // Create conditional jump and get projected branches
-            Block trueBlock = data.constructor.newBlock();
-            Block falseBlock = data.constructor.newBlock();
-            Block mergeBlock = data.constructor.newBlock();
+            Block trueBlock = data.constructor.newBlock(data.function, "true");
+            Block falseBlock = data.constructor.newBlock(data.function, "false");
+            Block mergeBlock = data.constructor.newBlock(data.function, "merge");
             Node condJump = data.constructor.newCondJump(condition, trueBlock, falseBlock);
             trueBlock.addPredecessor(condJump);
             falseBlock.addPredecessor(condJump);
