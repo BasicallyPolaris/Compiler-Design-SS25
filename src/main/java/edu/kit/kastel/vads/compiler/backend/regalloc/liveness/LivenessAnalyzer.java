@@ -54,18 +54,16 @@ public class LivenessAnalyzer {
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     //Rule J2
-                    case Operation.RETURN -> {
-                        livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
-                    }
+                    case Operation.RETURN ->
+                            livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
+
                     //Rule J3
                     case Operation.ASSIGN -> {
                         livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     //Rule J4
-                    case Operation.GOTO -> {
-                        livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
-                    }
+                    case Operation.GOTO -> livenessPredicates.add(predicateGenerator.succ(k, currentLine.jumpTarget));
                     //Rule J5
                     case Operation.CONDITIONAL_GOTO -> {
                         livenessPredicates.add(predicateGenerator.use(k, currentLine.parameters.getFirst()));
@@ -95,9 +93,8 @@ public class LivenessAnalyzer {
             for (LivenessPredicate predicate : livenessPredicates) {
                 switch (predicate.type) {
                     //Rule J1
-                    case LivenessPredicateType.USE -> {
-                        livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
-                    }
+                    case LivenessPredicateType.USE ->
+                            livenessPredicates2.add(predicateGenerator.live(predicate.lineNumber, predicate.parameter));
                     case LivenessPredicateType.SUCC -> {
                         for (LivenessPredicate pred : livenessPredicates) {
                             if (pred.type == LivenessPredicateType.LIVE && pred.lineNumber == predicate.succLineNumber & !(livenessPredicates.contains(predicateGenerator.def(predicate.lineNumber, pred.parameter)))) {
@@ -154,12 +151,10 @@ public class LivenessAnalyzer {
                 params.add(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)));
                 livenessLines.add(new NoAssignmentLivenessLine(lineCount++, Operation.RETURN, params));
             }
-            case ConstIntNode c -> {
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
-            }
-            case ConstBoolNode b -> {
-                livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
-            }
+            case ConstIntNode c ->
+                    livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(c), List.of()));
+            case ConstBoolNode b ->
+                    livenessLines.add(new AssignmentLivenessLine(lineCount++, Operation.ASSIGN, registers.get(b), List.of()));
 //          TODO: Implement Jump & CondJump Nodes
 //            case JumpNode j -> {
 //                livenessLines.add(new JumpLivenessLine(lineCount++, Operation.GOTO, List.of(), JUMP TARGET (HOW TO FIND IN THE IR TREE?));
@@ -183,12 +178,6 @@ public class LivenessAnalyzer {
             }
             //TODO:
             case CondExprNode condExprNode -> {
-            }
-            case IfElseNode ifElseNode -> {
-            }
-            case IfNode ifNode -> {
-            }
-            case WhileNode whileNode -> {
             }
             case CondJumpNode condJumpNode -> {
             }

@@ -14,9 +14,7 @@ import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BinaryOperator;
 
 /// SSA translation as described in
@@ -398,12 +396,45 @@ public class SsaTranslation {
         @Override
         public Optional<Node> visit(CondExprTree condExprTree, SsaTranslation data) {
             pushSpan(condExprTree);
-            Node cond = condExprTree.cond().accept(this, data).orElseThrow();
-            Node exp1 = condExprTree.exp1().accept(this, data).orElseThrow();
-            Node exp2 = condExprTree.exp2().accept(this, data).orElseThrow();
-            Node res = data.constructor.newConditional(cond, exp1, exp2);
+
+            // Evaluate condition in current block
+            Node condition = condExprTree.cond().accept(this, data).orElseThrow();
+
+            // Create conditional jump and get projected branches
+            Block trueBlock = data.constructor.newBlock();
+            Block falseBlock = data.constructor.newBlock();
+            Block mergeBlock = data.constructor.newBlock();
+            Node condJump = data.constructor.newCondJump(condition, trueBlock, falseBlock);
+            trueBlock.addPredecessor(condJump);
+            falseBlock.addPredecessor(condJump);
+
+            // Process true branch
+            data.constructor.setCurrentBlock(trueBlock);
+            Node trueValue = condExprTree.exp1().accept(this, data).orElseThrow();
+            Node trueExit = data.constructor.newJump(mergeBlock);
+            data.constructor.sealBlock(trueBlock);
+
+            // Process false branch
+            data.constructor.setCurrentBlock(falseBlock);
+            Node falseValue = condExprTree.exp2().accept(this, data).orElseThrow();
+            Node falseExit = data.constructor.newJump(mergeBlock);
+            data.constructor.sealBlock(falseBlock);
+
+            // Create follow block and phi node
+            mergeBlock.addPredecessor(trueExit);
+            mergeBlock.addPredecessor(falseExit);
+            data.constructor.setCurrentBlock(mergeBlock);
+            data.constructor.sealBlock(mergeBlock);
+
+            // Create phi node to merge the values
+            Phi phi = data.constructor.newPhi(mergeBlock);
+            phi.addPredecessor(trueValue);
+            phi.addPredecessor(falseValue);
+
+            Node result = data.constructor.tryRemoveTrivialPhi(phi);
+
             popSpan();
-            return Optional.of(res);
+            return Optional.of(result);
         }
 
         private Node projResultDivMod(SsaTranslation data, Node divMod) {

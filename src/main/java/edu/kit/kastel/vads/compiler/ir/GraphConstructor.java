@@ -143,18 +143,6 @@ class GraphConstructor {
         return this.optimizer.transform(new ConstBoolNode(this.graph.startBlock(), value));
     }
 
-    public Node newIfElse(Node condition, Node thenBranch, Node elseBranch) {
-        return this.optimizer.transform(new IfElseNode(currentBlock(), condition, thenBranch, elseBranch));
-    }
-
-    public Node newIf(Node condition, Node thenBranch) {
-        return this.optimizer.transform(new IfNode(currentBlock(), condition, thenBranch));
-    }
-
-    public Node newWhile(Node condition, Node body) {
-        return this.optimizer.transform(new WhileNode(currentBlock(), condition, body));
-    }
-
     public Node newSideEffectProj(Node node) {
         return new ProjNode(currentBlock(), node, ProjNode.SimpleProjectionInfo.SIDE_EFFECT);
     }
@@ -167,9 +155,9 @@ class GraphConstructor {
         return this.currentBlock;
     }
 
-    public Phi newPhi() {
+    public Phi newPhi(Block block) {
         // don't transform phi directly, it is not ready yet
-        return new Phi(currentBlock());
+        return new Phi(block);
     }
 
     public void cleanupTrivialPhis() {

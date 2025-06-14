@@ -4,8 +4,6 @@ import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.*;
-import edu.kit.kastel.vads.compiler.ir.util.GraphVizPrinter;
-import edu.kit.kastel.vads.compiler.ir.util.YCompPrinter;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,12 +111,6 @@ public class CodeGenerator {
             //TODO
             case CondExprNode condExprNode -> {
             }
-            case IfElseNode ifElseNode -> {
-            }
-            case IfNode ifNode -> {
-            }
-            case WhileNode whileNode -> {
-            }
             case CondJumpNode condJumpNode -> {
             }
             case JumpNode jumpNode -> {
@@ -140,11 +132,7 @@ public class CodeGenerator {
         PhysicalRegister spillRegSource = new PhysicalRegister(X86_64Register.R14);
         PhysicalRegister spillRegDest = new PhysicalRegister(X86_64Register.R15);
         boolean spillSource = false;
-        boolean spillTarget = false;
-
-        if (target.register == X86_64Register.SPILL) {
-            spillTarget = true;
-        }
+        boolean spillTarget = target.register == X86_64Register.SPILL;
 
         if (secondParameter.register == X86_64Register.SPILL) {
             spillSource = true;
