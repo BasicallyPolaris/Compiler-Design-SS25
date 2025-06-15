@@ -351,6 +351,7 @@ public class SsaTranslation {
             data.constructor.setCurrentBlock(headerBlock);
             Node condition = whileTree.condition().accept(this, data).orElseThrow();
 
+
             // Create conditional jump: true goes to body, false goes to exit
             Node condJump = data.constructor.newCondJump(condition, bodyBlock, exitBlock);
             bodyBlock.addPredecessor(condJump);

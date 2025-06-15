@@ -12,6 +12,7 @@ import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipPr
 
 public class CodeGenerator {
     int labelCounter = 0;
+    Stack<Node> visitedStack = new Stack<>();
 
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
@@ -73,6 +74,7 @@ public class CodeGenerator {
         if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (visited.add(predecessor)) {
+                    visitedStack.add(predecessor);
                     scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
                 }
             }
@@ -159,6 +161,7 @@ public class CodeGenerator {
                         pred.setBlock(blockPred.block());
                         blockPred.addPredecessor(pred);
 
+                        visitedStack.add(blockPred);
                         scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
                     }
                 }
@@ -449,9 +452,9 @@ public class CodeGenerator {
         String trueLabel = "label_" + labelCounter++;
         String falseLabel = "label_" + labelCounter++;
         builder.repeat(" ", 2).append("cmp ")
-                .append(firstParameter)
-                .append(", ")
                 .append(secondParameter)
+                .append(", ")
+                .append(firstParameter)
                 .append("\n")
                 .repeat(" ", 2)
                 .append(comparison)
