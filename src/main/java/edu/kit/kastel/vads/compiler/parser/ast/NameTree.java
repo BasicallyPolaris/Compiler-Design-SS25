@@ -6,8 +6,10 @@ import edu.kit.kastel.vads.compiler.parser.type.BasicType;
 import edu.kit.kastel.vads.compiler.parser.type.Type;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
-public record NameTree(Name name, Span span) implements Tree {
-
+public record NameTree(Name name, BasicType type, Span span) implements Tree {
+    public BasicType getType() {
+        return type;
+    }
 
     @Override
     public <T, R> R accept(Visitor<T, R> visitor, T data) {

@@ -18,6 +18,6 @@ public record IdentExpressionTree(NameTree name) implements ExpressionTree {
     //TODO: How to overrite for the nametree if declared???
     @Override
     public BasicType getType() {
-        return BasicType.VOID;
+        return name.getType();
     }
 }

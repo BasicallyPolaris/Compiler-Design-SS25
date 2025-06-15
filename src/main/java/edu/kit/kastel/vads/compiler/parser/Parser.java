@@ -17,6 +17,7 @@ import java.util.Map;
 
 public class Parser {
     private final TokenSource tokenSource;
+    private Map<Name, BasicType> declarations = new HashMap<>();
 
     public Parser(TokenSource tokenSource) {
         this.tokenSource = tokenSource;
@@ -46,7 +47,7 @@ public class Parser {
 
         return new FunctionTree(
                 new TypeTree(BasicType.INT, returnType.span()),
-                name(identifier),
+                name(identifier, BasicType.INT),
                 body
         );
     }
@@ -90,6 +91,7 @@ public class Parser {
     private StatementTree parseDeclaration(BasicType basicType, SeparatorType expectedSeparator, boolean shouldParseRecursively) {
         Keyword type = this.tokenSource.expectKeyword(basicType.getKeywordType());
         Identifier ident = this.tokenSource.expectIdentifier();
+        declarations.put(Name.forIdentifier(ident), basicType);
         ExpressionTree expr = null;
         if (this.tokenSource.peek().isOperator(OperatorType.ASSIGN)) {
             this.tokenSource.expectOperator(OperatorType.ASSIGN);
@@ -105,7 +107,7 @@ public class Parser {
             }
         }
 
-        return new DeclarationTree(new TypeTree(basicType, type.span()), name(ident), expr, statements);
+        return new DeclarationTree(new TypeTree(basicType, type.span()), name(ident, basicType), expr, statements);
     }
 
     private StatementTree parseSimple() {
@@ -143,7 +145,7 @@ public class Parser {
             return inner;
         }
         Identifier identifier = this.tokenSource.expectIdentifier();
-        return new LValueIdentTree(name(identifier));
+        return new LValueIdentTree(name(identifier, declarations.get(Name.forIdentifier(identifier))));
     }
 
     private StatementTree parseReturn() {
@@ -326,7 +328,7 @@ public class Parser {
             }
             case Identifier ident -> {
                 this.tokenSource.consume();
-                yield new IdentExpressionTree(name(ident));
+                yield new IdentExpressionTree(name(ident, declarations.get(Name.forIdentifier(ident))));
             }
             case NumberLiteral(String value, int base, Span span) -> {
                 this.tokenSource.consume();
@@ -427,7 +429,7 @@ public class Parser {
         return new WhileTree(conditionExpression, body);
     }
 
-    private static NameTree name(Identifier ident) {
-        return new NameTree(Name.forIdentifier(ident),  ident.span());
+    private static NameTree name(Identifier ident, BasicType type) {
+        return new NameTree(Name.forIdentifier(ident),  type, ident.span());
     }
 }

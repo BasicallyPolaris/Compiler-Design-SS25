@@ -6,7 +6,9 @@ import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
 public record LValueIdentTree(NameTree name) implements LValueTree {
 
-
+    public BasicType getType() {
+        return name.getType();
+    }
     @Override
     public Span span() {
         return name().span();
