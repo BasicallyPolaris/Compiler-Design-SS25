@@ -2,4 +2,5 @@
 /.idea/
 /.gradle/
 /bin/
-/test-code/
+/test-code/*
+!/test-code/.gitkeep
