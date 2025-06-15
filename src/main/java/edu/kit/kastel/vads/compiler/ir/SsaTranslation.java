@@ -120,8 +120,6 @@ public class SsaTranslation {
                 case BIT_AND -> data.constructor.newBitAnd(lhs, rhs);
                 case BIT_XOR -> data.constructor.newBitXor(lhs, rhs);
                 case BIT_OR -> data.constructor.newBitOr(lhs, rhs);
-                case LOG_AND -> data.constructor.newAnd(lhs, rhs);
-                case LOG_OR -> data.constructor.newOr(lhs, rhs);
                 case DIV -> projResultDivMod(data, data.constructor.newDiv(lhs, rhs));
                 case MOD -> projResultDivMod(data, data.constructor.newMod(lhs, rhs));
                 default ->
@@ -230,17 +228,6 @@ public class SsaTranslation {
         }
 
         @Override
-        public Optional<Node> visit(LogNotTree logNotTree, SsaTranslation data) {
-            pushSpan(logNotTree);
-            Node node = logNotTree.expression().accept(this, data).orElseThrow();
-            // TODO: DECIDE HOW TO REMOVE / ACCEPT THE CONDITIONAL NODES WE ADD HERE ?
-            Node conditional = data.constructor.newConditional(node, data.constructor.newConstBool(false),
-                    data.constructor.newConstBool(true));
-            popSpan();
-            return Optional.of(conditional);
-        }
-
-        @Override
         public Optional<Node> visit(ProgramTree programTree, SsaTranslation data) {
             throw new UnsupportedOperationException();
         }
@@ -279,6 +266,7 @@ public class SsaTranslation {
             popSpan();
             return NOT_AN_EXPRESSION;
         }
+
 
         @Override
         public Optional<Node> visit(IfTree ifTree, SsaTranslation data) {

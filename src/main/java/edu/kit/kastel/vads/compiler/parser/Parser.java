@@ -182,7 +182,7 @@ public class Parser {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
                     && (type == OperatorType.LOG_OR)) {
                 this.tokenSource.consume();
-                lhs = new BinaryOperationTree(lhs, parseExpressionLogAnd(), type);
+                lhs = new CondExprTree(lhs, new BoolLiteralTree("true", lhs.span()), parseExpressionLogAnd());
             } else {
                 return lhs;
             }
@@ -195,7 +195,7 @@ public class Parser {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
                     && (type == OperatorType.LOG_AND)) {
                 this.tokenSource.consume();
-                lhs = new BinaryOperationTree(lhs, parseExpressionBitOr(), type);
+                lhs = new CondExprTree(lhs, parseExpressionBitOr(), new BoolLiteralTree("false", lhs.span()));
             } else {
                 return lhs;
             }

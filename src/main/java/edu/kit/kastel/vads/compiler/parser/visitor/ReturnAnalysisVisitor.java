@@ -170,12 +170,6 @@ public class ReturnAnalysisVisitor<T, R> implements Visitor<T, R> {
         return r;
     }
 
-    @Override
-    public R visit(LogNotTree logNotTree, T data) {
-        R r = logNotTree.expression().accept(this, data);
-        r = this.visitor.visit(logNotTree, accumulate(data, r));
-        return r;
-    }
 
     @Override
     public R visit(BitNotTree bitNotTree, T data) {

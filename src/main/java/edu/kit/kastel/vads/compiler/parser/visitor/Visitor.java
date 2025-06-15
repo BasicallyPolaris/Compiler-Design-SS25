@@ -30,14 +30,11 @@ public interface Visitor<T, R> {
 
     R visit(TypeTree typeTree, T data);
 
-    //TODO: Implement new visits
     R visit(IfTree ifTree, T data);
 
     R visit(WhileTree whileTree, T data);
     
     R visit(SequentialStatementTree sequentialStatementTree, T data);
-
-    R visit(LogNotTree logNotTree, T data);
 
     R visit(BitNotTree bitNotTree, T data);
 

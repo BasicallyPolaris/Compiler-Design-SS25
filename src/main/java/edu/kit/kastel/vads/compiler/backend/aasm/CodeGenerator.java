@@ -71,7 +71,7 @@ public class CodeGenerator {
         if (node instanceof JumpNode && node.block().predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
-        if (!(node instanceof Phi)) {
+        if (!(node instanceof Phi || (node instanceof Block && node != graph.endBlock()))) {
             for (Node predecessor : node.predecessors()) {
                 if (visited.add(predecessor)) {
                     visitedStack.add(predecessor);
@@ -149,18 +149,17 @@ public class CodeGenerator {
                                 pred -> pred instanceof ProjNode && ((ProjNode) pred)
                                         .projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT);
 
-                if (onlySideEffects)
-                    break;
+                if (!onlySideEffects) {
+                    for (int i = 0; i < p.block().predecessors().size(); i++) {
+                        Node pred = p.predecessor(i);
+                        Node blockPred = p.block().predecessor(i);
 
-                for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    Node pred = p.predecessor(i);
-                    Node blockPred = p.block().predecessor(i);
+                        graph.removeSuccessor(pred, p);
+                        pred.setBlock(blockPred.block());
+                        blockPred.addPredecessor(pred);
 
-                    graph.removeSuccessor(pred, p);
-                    pred.setBlock(blockPred.block());
-                    blockPred.addPredecessor(pred);
-
-                    scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
+                        scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
+                    }
                 }
             }
             case ProjNode _, StartNode _ -> {

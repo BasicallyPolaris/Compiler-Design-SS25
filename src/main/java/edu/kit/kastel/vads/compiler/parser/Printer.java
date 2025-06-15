@@ -149,11 +149,6 @@ public class Printer {
                 printTree(expression);
                 print(")");
             }
-            case LogNotTree(var expression, _) -> {
-                print("!(");
-                printTree(expression);
-                print(")");
-            }
         }
     }
 

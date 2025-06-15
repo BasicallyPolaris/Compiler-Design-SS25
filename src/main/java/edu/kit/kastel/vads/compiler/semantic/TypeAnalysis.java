@@ -87,14 +87,6 @@ public class TypeAnalysis implements NoOpVisitor<List<ReturnTree>> {
     }
 
     @Override
-    public Unit visit(LogNotTree node, List<ReturnTree> data) {
-        if (node.expression().getType() != node.getType()) {
-            throw new SemanticException("Type mismatch: " + node.expression().getType() + " does not match expected type: " + node.getType());
-        }
-        return NoOpVisitor.super.visit(node,data);
-    }
-
-    @Override
     public Unit visit(NegateTree node, List<ReturnTree> data) {
         if (node.expression().getType() != node.getType()) {
             throw new SemanticException("Type mismatch: " + node.expression().getType() + " does not match expected type: " + node.getType());

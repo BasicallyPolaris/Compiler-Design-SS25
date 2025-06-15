@@ -57,11 +57,6 @@ public interface NoOpVisitor<T> extends Visitor<T, Unit> {
     }
 
     @Override
-    default Unit visit(LogNotTree logNotTree, T data) {
-        return Unit.INSTANCE;
-    }
-
-    @Override
     default Unit visit(BitNotTree bitNotTree, T data) {
         return Unit.INSTANCE;
     }
