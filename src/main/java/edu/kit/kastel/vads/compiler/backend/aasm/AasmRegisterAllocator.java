@@ -34,9 +34,16 @@ public class AasmRegisterAllocator implements RegisterAllocator {
                 }
             }
 
-
             if (needsRegister(node) && shouldAddRegister) {
                 this.registers.put(node, new VirtualRegister(this.id++));
+            }
+
+            if (node instanceof JumpNode) {
+                if (node.predecessors().isEmpty()) {
+                    for (Node pred : node.block().predecessors()) {
+                        scan(pred, visited);
+                    }
+                }
             }
 
             return;
@@ -52,9 +59,13 @@ public class AasmRegisterAllocator implements RegisterAllocator {
         if (onlySideEffects) return;
 
         VirtualRegister phiRegister = new VirtualRegister(this.id++);
-        for (Node pred : node.predecessors()) {
+        // TODO: Is the order right?
+        for (int i = 0; i < node.predecessors().size(); i++) {
+            scan(node.block().predecessor(i), visited);
+            Node pred = node.predecessors().get(i);
             scan(pred, visited, false);
-            if (needsRegister(pred)) {
+
+            if (needsRegister(pred) && shouldAddRegister) {
                 this.registers.put(pred, phiRegister);
             }
         }

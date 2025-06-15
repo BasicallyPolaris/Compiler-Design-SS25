@@ -24,6 +24,6 @@ public final class AssignmentLivenessLine extends LivenessLine {
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
 
-        return target + " = " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
+        return "Root: " + rootNode + " - " + target + " = " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
     }
 }

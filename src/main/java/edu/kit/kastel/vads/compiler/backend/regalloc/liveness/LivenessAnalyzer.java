@@ -6,6 +6,7 @@ import edu.kit.kastel.vads.compiler.ir.node.*;
 
 import java.util.*;
 
+import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipJump;
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
 public class LivenessAnalyzer {
@@ -26,11 +27,12 @@ public class LivenessAnalyzer {
         this.lineCount = 0;
         this.nodeLineNumbers = new IdentityHashMap<>();
         this.livenessLines = new ArrayList<>();
-        fillLivenessInformation();
         this.livenessPredicates = new HashSet<>();
     }
 
     public void calculateLiveness() {
+        //Step 0: Accumulate liveness data
+        fillLivenessInformation();
         //Step 1: Use J-Rules Exhaustively
         generatePredicates();
         //Step 2: Use K Rules exhaustively on the generated predicates to fill livenessline live-in information
@@ -67,10 +69,11 @@ public class LivenessAnalyzer {
                         livenessPredicates.add(predicateGenerator.succ(k, k + 1));
                     }
                     case Operation.PHI_ASSIGN -> {
-                        for (Register p: currentLine.parameters)
-                        livenessPredicates.add(predicateGenerator.use(k, p));
-                        livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
-                        livenessPredicates.add(predicateGenerator.succ(k, k + 1));
+                        for (Register p : currentLine.parameters) {
+                            livenessPredicates.add(predicateGenerator.use(k, p));
+                            livenessPredicates.add(predicateGenerator.def(k, currentLine.target));
+                            livenessPredicates.add(predicateGenerator.succ(k, k + 1));
+                        }
                     }
                     //Rule J4
                     case Operation.GOTO -> {
@@ -156,6 +159,13 @@ public class LivenessAnalyzer {
                 }
             }
         }
+        if (node instanceof JumpNode) {
+            if (node.predecessors().isEmpty()) {
+                for (Node pred : node.block().predecessors()) {
+                    scan(pred, visited);
+                }
+            }
+        }
 
         switch (node) {
             case BinaryOperationNode b -> {
@@ -180,7 +190,6 @@ public class LivenessAnalyzer {
                 setNodeLineNumber(b);
                 livenessLines.add(new AssignmentLivenessLine(b, Operation.ASSIGN, registers.get(b), List.of()));
             }
-
             case JumpNode j -> {
                 setNodeLineNumber(j);
                 Collection<Node> successors = irGraph.successors(j);
@@ -198,7 +207,6 @@ public class LivenessAnalyzer {
                 setNodeLineNumber(cj);
                 livenessLines.add(new JumpLivenessLine(cj, Operation.CONDITIONAL_GOTO, params, irGraph.successors(cj).iterator().next()));
             }
-
             case Phi p -> {
 //              assert p.block().predecessors().size() = p.predecessors();
                 boolean onlySideEffects = p
@@ -212,7 +220,7 @@ public class LivenessAnalyzer {
                 if (onlySideEffects) break;
 
                 List<Register> params = new ArrayList<>();
-                //TODO: Maybe traverse block predecessors only  if the phi has no other predecessors to solve case with mutliple phis in single block??
+                //TODO: Maybe traverse block predecessors only if the phi has no other predecessors to solve case with mutliple phis in single block??
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
                     scan(p.block().predecessors().get(i), visited);
@@ -224,9 +232,11 @@ public class LivenessAnalyzer {
                 setNodeLineNumber(p);
                 livenessLines.add(new AssignmentLivenessLine(p, Operation.PHI_ASSIGN, registers.get(p), params));
             }
-            case Block _, ProjNode _, StartNode _, UndefinedNode _, CondExprNode _-> {
+            case Block _, ProjNode _, StartNode _, UndefinedNode _ -> {
                 // do nothing, skip line break
             }
+            case CondExprNode _ ->
+                    throw new UnsupportedOperationException("Cond Expression Nodes should not exist in liveness analysis step anymore");
         }
     }
 

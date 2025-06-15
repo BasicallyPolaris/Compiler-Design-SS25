@@ -25,6 +25,6 @@ public final class JumpLivenessLine extends LivenessLine {
         String params = parameters.stream()
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
-        return operation + "(" + params + ")" + "Jump Target: " + jumpTarget +  ", Liveness Variables: " + liveInVariables;
+        return "Root: " + rootNode + " - " + operation + "(" + params + ")" + "Jump Target: " + jumpTarget.toString() +  ", Liveness Variables: " + liveInVariables;
     }
 }

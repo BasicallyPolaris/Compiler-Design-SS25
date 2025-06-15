@@ -24,6 +24,6 @@ public final class NoAssignmentLivenessLine extends LivenessLine {
         String params = parameters.stream()
                 .map(Register::toString)
                 .collect(Collectors.joining(", "));
-        return operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
+        return "Root: " + rootNode + " - " + operation + "(" + params + ")" + "Liveness Variables: " + liveInVariables;
     }
 }
