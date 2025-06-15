@@ -153,17 +153,14 @@ public class CodeGenerator {
                     break;
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    if (visited.add(p.block().predecessor(i))) {
-                        Node pred = p.predecessor(i);
-                        Node blockPred = p.block().predecessor(i);
+                    Node pred = p.predecessor(i);
+                    Node blockPred = p.block().predecessor(i);
 
-                        graph.removeSuccessor(pred, p);
-                        pred.setBlock(blockPred.block());
-                        blockPred.addPredecessor(pred);
+                    graph.removeSuccessor(pred, p);
+                    pred.setBlock(blockPred.block());
+                    blockPred.addPredecessor(pred);
 
-                        visitedStack.add(blockPred);
-                        scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
-                    }
+                    scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
                 }
             }
             case ProjNode _, StartNode _ -> {
