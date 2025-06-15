@@ -6,10 +6,10 @@ import edu.kit.kastel.vads.compiler.parser.ast.*;
 ///
 /// @param <T> a type for additional data
 /// @param <R> a type for a return type
-public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
+public class ReturnAnalysisVisitor<T, R> implements Visitor<T, R> {
     private final Visitor<T, R> visitor;
 
-    public RecursivePostorderVisitor(Visitor<T, R> visitor) {
+    public ReturnAnalysisVisitor(Visitor<T, R> visitor) {
         this.visitor = visitor;
     }
 
@@ -46,28 +46,28 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         T currentData = data;
         R lastResult;
 
-        // 1. Visit type
+        // 1. Visit statements that come after the declaration
+        for (StatementTree statement : declarationTree.statements()) {
+            lastResult = statement.accept(this, currentData);
+            currentData = accumulate(currentData, lastResult);
+        }
+
+        // 2. Visit type
         lastResult = declarationTree.type().accept(this, currentData);
         currentData = accumulate(currentData, lastResult);
 
-        // 2. Visit name
+        // 3. Visit name
         lastResult = declarationTree.name().accept(this, currentData);
         currentData = accumulate(currentData, lastResult);
 
-        // 3. Visit initializer (if it exists)
+        // 4. Visit initializer (if it exists)
         if (declarationTree.initializer() != null) {
             lastResult = declarationTree.initializer().accept(this, currentData);
             currentData = accumulate(currentData, lastResult);
         }
 
-        // 4. Visit the DeclarationTree node itself
+        // 5. Visit the DeclarationTree node itself
         lastResult = this.visitor.visit(declarationTree, currentData);
-
-        // 5. Visit statements that come after the declaration
-        for (StatementTree statement : declarationTree.statements()) {
-            lastResult = statement.accept(this, currentData);
-            currentData = accumulate(currentData, lastResult);
-        }
 
         return lastResult;
     }
@@ -189,15 +189,14 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         T d = data;
         R r;
 
-        // 1. Visit the Root
-        r = sequentialStatementTree.statement().accept(this, d);
-        d = accumulate(d, r);
-
-        // 2. Visit statements that come after the first statement at root
+        // 1. Visit statements that come after the first statement at root
         for (StatementTree statement : sequentialStatementTree.statements()) {
             r = statement.accept(this, d);
             d = accumulate(d, r);
         }
+
+        // 2. Visit the Root
+        r = sequentialStatementTree.statement().accept(this, d);
 
         return r;
     }
