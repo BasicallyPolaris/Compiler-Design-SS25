@@ -2,6 +2,7 @@ package edu.kit.kastel.vads.compiler.parser.ast;
 
 import edu.kit.kastel.vads.compiler.lexer.Operator;
 import edu.kit.kastel.vads.compiler.Span;
+import edu.kit.kastel.vads.compiler.parser.type.BasicType;
 import edu.kit.kastel.vads.compiler.parser.visitor.Visitor;
 
 public record CondExprTree(
@@ -14,5 +15,14 @@ public record CondExprTree(
     @Override
     public <T, R> R accept(Visitor<T, R> visitor, T data) {
         return visitor.visit(this, data);
+    }
+
+    @Override
+    public BasicType getType() {
+        if (exp1.getType() == exp2.getType()) {
+            return exp1.getType();
+        } else {
+            return BasicType.VOID;
+        }
     }
 }

@@ -8,9 +8,12 @@ import edu.kit.kastel.vads.compiler.Span;
 import edu.kit.kastel.vads.compiler.parser.ast.*;
 import edu.kit.kastel.vads.compiler.parser.symbol.Name;
 import edu.kit.kastel.vads.compiler.parser.type.BasicType;
+import edu.kit.kastel.vads.compiler.parser.type.Type;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Parser {
     private final TokenSource tokenSource;
@@ -425,6 +428,6 @@ public class Parser {
     }
 
     private static NameTree name(Identifier ident) {
-        return new NameTree(Name.forIdentifier(ident), ident.span());
+        return new NameTree(Name.forIdentifier(ident),  ident.span());
     }
 }

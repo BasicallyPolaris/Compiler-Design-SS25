@@ -7,7 +7,8 @@ import java.util.Locale;
 
 public enum BasicType implements Type {
     BOOL,
-    INT;
+    INT,
+    VOID;
 
     public KeywordType getKeywordType() {
         return switch (this) {

@@ -142,16 +142,30 @@ public class RecursivePostorderVisitor<T, R> implements Visitor<T, R> {
         return this.visitor.visit(typeTree, data);
     }
 
-    //TODO: Implement missing cases
     @Override
     public R visit(IfTree ifTree, T data) {
-        return null;
+        R r;
+        T d = data;
+        r = ifTree.condition().accept(this, d);
+        d = accumulate(data, r);
+        r = ifTree.thenStatement().accept(this, d);
+        d = accumulate(data, r);
+        r = ifTree.elseStatement().accept(this, d);
+        d = accumulate(data, r);
+        r = this.visitor.visit(ifTree, d);
+        return r;
     }
 
-    //TODO: Implement missing cases
     @Override
     public R visit(WhileTree whileTree, T data) {
-        return null;
+        R r;
+        T d = data;
+        r = whileTree.condition().accept(this, d);
+        d = accumulate(data, r);
+        r = whileTree.body().accept(this, d);
+        d = accumulate(data, r);
+        r = this.visitor.visit(whileTree, d);
+        return r;
     }
 
     @Override
