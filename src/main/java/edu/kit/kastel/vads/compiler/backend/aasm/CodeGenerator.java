@@ -16,7 +16,7 @@ public class CodeGenerator {
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
         for (IrGraph graph : program) {
-            //System.out.println(YCompPrinter.print(graph));
+            // System.out.println(YCompPrinter.print(graph));
             AasmRegisterAllocator allocator = new AasmRegisterAllocator();
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
@@ -45,7 +45,8 @@ public class CodeGenerator {
                     .append("syscall\n\n")
                     .append("_main:\n");
 
-            // Save previous Stackpointer, allocate 4 * spilled register Amount of bytes on the stack
+            // Save previous Stackpointer, allocate 4 * spilled register Amount of bytes on
+            // the stack
             if (spilledRegisters.get() > 0) {
                 builder.append("  push %rbp\n")
                         .append("  mov %rsp, %rbp\n")
@@ -57,13 +58,15 @@ public class CodeGenerator {
         return builder.toString();
     }
 
-    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount) {
+    private void generateForGraph(IrGraph graph, StringBuilder builder, Map<Node, PhysicalRegister> registers,
+                                  int spilledRegisterCount) {
         Set<Node> visited = new HashSet<>();
         scan(graph.endBlock(), visited, builder, registers, spilledRegisterCount, graph);
     }
 
-    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount, IrGraph graph) {
-        //TODO: When is the right point of time to visit the blocks?
+    private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers,
+                      int spilledRegisterCount, IrGraph graph) {
+        // TODO: When is the right point of time to visit the blocks?
         if (node instanceof JumpNode && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
@@ -78,18 +81,19 @@ public class CodeGenerator {
             }
         }
 
-        //We need labels for blocks, but not for start or end blocks
-//        if (node instanceof Block & !(node == graph.endBlock() || node == graph.startBlock())) {
-//            //Create label with blockname
-//            builder.append(((Block) node).blockName() + ":");
-//            builder.append("\n");
-//            for (Node blockPredecessor : node.predecessors()) {
-//                if (visited.add(blockPredecessor)) {
-//                    scan(blockPredecessor, visited, builder, registers, spilledRegisterCount, graph);
-//                }
-//            }
-//        }
-
+        // We need labels for blocks, but not for start or end blocks
+        // if (node instanceof Block & !(node == graph.endBlock() || node ==
+        // graph.startBlock())) {
+        // //Create label with blockname
+        // builder.append(((Block) node).blockName() + ":");
+        // builder.append("\n");
+        // for (Node blockPredecessor : node.predecessors()) {
+        // if (visited.add(blockPredecessor)) {
+        // scan(blockPredecessor, visited, builder, registers, spilledRegisterCount,
+        // graph);
+        // }
+        // }
+        // }
 
         switch (node) {
             case AddNode add -> binary(builder, registers, add);
@@ -111,7 +115,8 @@ public class CodeGenerator {
             case LShiftNode lShift -> binary(builder, registers, lShift);
             case RShiftNode rShift -> binary(builder, registers, rShift);
             case ReturnNode r -> builder
-                    .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT))).append(", %eax\n")
+                    .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)))
+                    .append(", %eax\n")
                     .append("  addq $").append(spilledRegisterCount * 4).append(", %rsp\n")
                     .append("  pop %rbp\n")
                     .append("  ret");
@@ -139,10 +144,11 @@ public class CodeGenerator {
                         .predecessors()
                         .stream()
                         .allMatch(
-                                pred -> pred instanceof ProjNode && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
-                        );
+                                pred -> pred instanceof ProjNode && ((ProjNode) pred)
+                                        .projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT);
 
-                if (onlySideEffects) break;
+                if (onlySideEffects)
+                    break;
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
                     if (visited.add(p.block().predecessor(i))) {
@@ -165,27 +171,26 @@ public class CodeGenerator {
                     throw new UnsupportedOperationException("No CondExprNodes should be in CodeGen step");
             case Block block -> {
                 if (!(node == graph.endBlock() || node == graph.startBlock())) {
-                    //Create label with blockname
+                    // Create label with blockname
                     builder.append(block.blockName()).append(":");
                     builder.append("\n");
                 }
             }
             case CondJumpNode condJumpNode -> {
-                //TODO: end label to avoid infinite loops
-                //TODO: compare needs a register, currently as null (why??)
-                //Check condition
+                // TODO: end label to avoid infinite loops
+                // TODO: compare needs a register, currently as null (why??)
+                // Check condition
                 PhysicalRegister condition = registers.get(condJumpNode.predecessors().getFirst());
                 builder.repeat(" ", 2)
-                        .append("cmp ")
+                        .append("cmpl $1, ")
                         .append(condition)
-                        .append(", $1")
                         .append("\n");
-                //Jump if true
+                // Jump if true
                 builder.repeat(" ", 2)
                         .append("je ")
                         .append(condJumpNode.trueTarget().blockName())
                         .append("\n");
-                //Jump if false
+                // Jump if false
                 builder.repeat(" ", 2)
                         .append("jmp ")
                         .append(condJumpNode.falseTarget().blockName())
@@ -205,8 +210,7 @@ public class CodeGenerator {
 
     private void comparison(StringBuilder builder,
                             Map<Node, PhysicalRegister> registers,
-                            BinaryOperationNode node
-    ) {
+                            BinaryOperationNode node) {
         PhysicalRegister target = registers.get(node);
         PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
         PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
@@ -219,7 +223,7 @@ public class CodeGenerator {
             spillSource = true;
         }
 
-        //Move spilled Target in R14 and use R14 as the new second parameter
+        // Move spilled Target in R14 and use R14 as the new second parameter
         if (spillSource) {
             builder.repeat(" ", 2).append("movl ")
                     .append(secondParameter)
@@ -229,24 +233,25 @@ public class CodeGenerator {
             secondParameter = spillRegSource;
         }
 
-        //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
+        // Move spilled Register in R15 (not neccessary for binops) and use R15 as
+        // target for binops
         if (spillTarget) {
-//            builder.repeat(" ", 2).append("movl ")
-//                    .append(target)
-//                    .append(", ")
-//                    .append(spillRegDest)
-//                    .append("\n");
+            // builder.repeat(" ", 2).append("movl ")
+            // .append(target)
+            // .append(", ")
+            // .append(spillRegDest)
+            // .append("\n");
             target = spillRegDest;
         }
 
-        //Move first parameter into target register for binop
-//        if (!firstParameter.equals(target)) {
-//            builder.repeat(" ", 2).append("movl ")
-//                    .append(firstParameter)
-//                    .append(", ")
-//                    .append(target)
-//                    .append("\n");
-//        }
+        // Move first parameter into target register for binop
+        // if (!firstParameter.equals(target)) {
+        // builder.repeat(" ", 2).append("movl ")
+        // .append(firstParameter)
+        // .append(", ")
+        // .append(target)
+        // .append("\n");
+        // }
         switch (node) {
             case LessNode _ -> {
                 writeCompareAssembly("jl ", builder, firstParameter, secondParameter, target);
@@ -281,12 +286,10 @@ public class CodeGenerator {
         }
     }
 
-
     private static void binary(
             StringBuilder builder,
             Map<Node, PhysicalRegister> registers,
-            BinaryOperationNode node
-    ) {
+            BinaryOperationNode node) {
         PhysicalRegister target = registers.get(node);
         PhysicalRegister firstParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.LEFT));
         PhysicalRegister secondParameter = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
@@ -299,7 +302,7 @@ public class CodeGenerator {
             spillSource = true;
         }
 
-        //Move spilled Target in R14 and use R14 as the new second parameter
+        // Move spilled Target in R14 and use R14 as the new second parameter
         if (spillSource) {
             builder.repeat(" ", 2).append("movl ")
                     .append(secondParameter)
@@ -309,17 +312,18 @@ public class CodeGenerator {
             secondParameter = spillRegSource;
         }
 
-        //Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
+        // Move spilled Register in R15 (not neccessary for binops) and use R15 as
+        // target for binops
         if (spillTarget) {
-//            builder.repeat(" ", 2).append("movl ")
-//                    .append(target)
-//                    .append(", ")
-//                    .append(spillRegDest)
-//                    .append("\n");
+            // builder.repeat(" ", 2).append("movl ")
+            // .append(target)
+            // .append(", ")
+            // .append(spillRegDest)
+            // .append("\n");
             target = spillRegDest;
         }
 
-        //Move first parameter into target register for binop
+        // Move first parameter into target register for binop
         if (!firstParameter.equals(target)) {
             builder.repeat(" ", 2).append("movl ")
                     .append(firstParameter)
@@ -341,12 +345,13 @@ public class CodeGenerator {
                     .append(secondParameter)
                     .append(", ")
                     .append(target);
-            //Logical And is like a multiplication of bools (which are 0(false) or >0 (true)
+            // Logical And is like a multiplication of bools (which are 0(false) or >0
+            // (true)
             case LogicAndNode _ -> builder.repeat(" ", 2).append("imull ")
                     .append(secondParameter)
                     .append(", ")
                     .append(target);
-            //Logical And is like an addition of bools (which are 0(false) or >0 (true)
+            // Logical And is like an addition of bools (which are 0(false) or >0 (true)
             case LogicOrNode _ -> builder.repeat(" ", 2).append("addl ")
                     .append(secondParameter)
                     .append(", ")
@@ -363,7 +368,7 @@ public class CodeGenerator {
                     .append(secondParameter)
                     .append(", ")
                     .append(target);
-            //TODO: Tricky shift details? See Lab 2 Notes and Hints
+            // TODO: Tricky shift details? See Lab 2 Notes and Hints
             case LShiftNode _ -> builder.repeat(" ", 2).append("sall ")
                     .append(secondParameter)
                     .append(", ")
@@ -407,7 +412,7 @@ public class CodeGenerator {
             default ->
                     throw new UnsupportedOperationException("Unsupported binary operation: " + node.getClass().getName());
         }
-        //Write back from R15 to the Stack
+        // Write back from R15 to the Stack
         if (spillTarget) {
             PhysicalRegister targetOnStack = registers.get(node);
             if (!spillRegDest.equals(targetOnStack)) {
@@ -417,26 +422,30 @@ public class CodeGenerator {
                         .append(targetOnStack);
             }
         }
-        //Write back from R14 to Stack (Parameter is not changed so doesn't need to be written back)
-//        if (spillSource) {
-//            PhysicalRegister secondParameterOnStack = registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
-//            builder.append("\n").repeat(" ", 2).append("movl ")
-//                    .append(spillRegSource)
-//                    .append(", ")
-//                    .append(secondParameterOnStack);
-//        }
+        // Write back from R14 to Stack (Parameter is not changed so doesn't need to be
+        // written back)
+        // if (spillSource) {
+        // PhysicalRegister secondParameterOnStack =
+        // registers.get(predecessorSkipProj(node, BinaryOperationNode.RIGHT));
+        // builder.append("\n").repeat(" ", 2).append("movl ")
+        // .append(spillRegSource)
+        // .append(", ")
+        // .append(secondParameterOnStack);
+        // }
     }
 
-//private static void generateMoveCode(StringBuilder builder, PhysicalRegister reg1, PhysicalRegister reg2) {
-//    if (!reg1.equals(reg2)) {
-//        builder.append("\n").repeat(" ", 2).append("movl ")
-//                .append(reg1)
-//                .append(", ")
-//                .append(reg2);
-//    }
-//}
+    // private static void generateMoveCode(StringBuilder builder, PhysicalRegister
+    // reg1, PhysicalRegister reg2) {
+    // if (!reg1.equals(reg2)) {
+    // builder.append("\n").repeat(" ", 2).append("movl ")
+    // .append(reg1)
+    // .append(", ")
+    // .append(reg2);
+    // }
+    // }
 
-    private void writeCompareAssembly(String comparison, StringBuilder builder, PhysicalRegister firstParameter, PhysicalRegister secondParameter, PhysicalRegister target) {
+    private void writeCompareAssembly(String comparison, StringBuilder builder, PhysicalRegister firstParameter,
+                                      PhysicalRegister secondParameter, PhysicalRegister target) {
         String trueLabel = "label_" + labelCounter++;
         String falseLabel = "label_" + labelCounter++;
         builder.repeat(" ", 2).append("cmp ")
