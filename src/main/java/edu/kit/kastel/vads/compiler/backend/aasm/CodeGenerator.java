@@ -64,15 +64,17 @@ public class CodeGenerator {
 
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers, int spilledRegisterCount, IrGraph graph) {
         //TODO: When is the right point of time to visit the blocks?
-        if (!visited.contains(node.block())) {
-            visited.add(node.block());
-            scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
+        if (node instanceof JumpNode && visited.add(node.block().predecessor(0))) {
+            scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
         if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (visited.add(predecessor)) {
                     scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
                 }
+            }
+            if (visited.add(node.block())) {
+                scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
             }
         }
 
@@ -143,9 +145,16 @@ public class CodeGenerator {
                 if (onlySideEffects) break;
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    scan(p.block().predecessors().get(i), visited, builder, registers, spilledRegisterCount, graph);
-                    // Do we have to set the predecessors block ?
-                    scan(p.predecessors().get(i), visited, builder, registers, spilledRegisterCount, graph);
+                    if (visited.add(p.block().predecessor(i))) {
+                        Node pred = p.predecessor(i);
+                        Node blockPred = p.block().predecessor(i);
+
+                        graph.removeSuccessor(pred, p);
+                        pred.setBlock(blockPred.block());
+                        blockPred.addPredecessor(pred);
+
+                        scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
+                    }
                 }
             }
             case ProjNode _, StartNode _ -> {

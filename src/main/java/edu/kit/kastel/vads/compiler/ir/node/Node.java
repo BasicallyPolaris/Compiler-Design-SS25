@@ -10,7 +10,7 @@ import java.util.List;
 /// The base class for all nodes.
 public sealed abstract class Node permits UndefinedNode, BinaryOperationNode, Block, CondExprNode, ConstBoolNode, ConstIntNode, CondJumpNode, JumpNode, Phi, ProjNode, ReturnNode, StartNode {
     private final IrGraph graph;
-    private final Block block;
+    private Block block;
     private final List<Node> predecessors = new ArrayList<>();
     private final DebugInfo debugInfo;
 
@@ -52,6 +52,10 @@ public sealed abstract class Node permits UndefinedNode, BinaryOperationNode, Bl
     public final void addPredecessor(Node node) {
         this.predecessors.add(node);
         this.graph.registerSuccessor(node, this);
+    }
+
+    public final void setBlock(Block block) {
+        this.block = block;
     }
 
     public final Node predecessor(int idx) {
