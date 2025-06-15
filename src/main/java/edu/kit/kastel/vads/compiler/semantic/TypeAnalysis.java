@@ -46,7 +46,7 @@ public class TypeAnalysis implements NoOpVisitor<List<ReturnTree>> {
     @Override
     public Unit visit(AssignmentTree node, List<ReturnTree> data) {
         LValueIdentTree identTree = (LValueIdentTree) node.lValue();
-        Type varType = declarations.get(identTree.name().name());
+        Type varType = identTree.getType();
         if (varType != node.expression().getType()) {
             throw new SemanticException("Type mismatch: " + varType + " does not match expected type: " + node.expression().getType());
         }
