@@ -67,7 +67,7 @@ public class CodeGenerator {
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers,
                       int spilledRegisterCount, IrGraph graph) {
         // TODO: When is the right point of time to visit the blocks?
-        if (node instanceof JumpNode && visited.add(node.block().predecessor(0))) {
+        if (node instanceof JumpNode && node.block().predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
         if (!(node instanceof Phi)) {
