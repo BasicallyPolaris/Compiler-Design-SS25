@@ -5,32 +5,30 @@ import edu.kit.kastel.vads.compiler.backend.regalloc.RegisterAllocator;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.*;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AasmRegisterAllocator implements RegisterAllocator {
     private int id;
     private final Map<Node, Register> registers = new HashMap<>();
-    private Node endBlock;
+    private Map<Node, Block> blocks = new HashMap<>();
+    //For debugging
+    Stack<Node> visitingOrder = new Stack<>();
 
     @Override
     public Map<Node, Register> allocateRegisters(IrGraph graph) {
         Set<Node> visited = new HashSet<>();
         visited.add(graph.endBlock());
-        this.endBlock = graph.endBlock();
         scan(graph.endBlock(), visited);
         return Map.copyOf(this.registers);
     }
 
     private void scan(Node node, Set<Node> visited) {
-        Node block = node.block();
+        visitingOrder.push(node);
         // TODO: Is it right that size equals 1 ? What if > 1 ?
-        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
+        if (node instanceof JumpNode && node.block().predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited);
         }
-        if (!(node instanceof Phi || (node instanceof Block && node != endBlock))) {
+        if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (!visited.contains(predecessor)) {
                     if (countAsVisited(node)) visited.add(predecessor);
@@ -48,9 +46,9 @@ public class AasmRegisterAllocator implements RegisterAllocator {
             if (needsRegister(node)) {
                 this.registers.put(node, new VirtualRegister(this.id++));
             }
-        }
 
-        if (!(node instanceof Phi)) return;
+            return;
+        }
 
 //        if (!(node instanceof Phi)) {
 //            for (Node predecessor : node.predecessors()) {
@@ -104,6 +102,13 @@ public class AasmRegisterAllocator implements RegisterAllocator {
 
     private static boolean needsRegister(Node node) {
         return !(node instanceof ProjNode || node instanceof StartNode || node instanceof Block || node instanceof ReturnNode || node instanceof JumpNode || node instanceof CondJumpNode);
+    }
+
+    // Change Node Block
+    private Block getNodeBlock(Node node) {
+        if (blocks.containsKey(node)) return blocks.get(node);
+
+        return node.block();
     }
 
     private static boolean countAsVisited(Node node) {

@@ -19,6 +19,9 @@ public class LivenessAnalyzer {
     public Map<Node, Integer> nodeLineNumbers;
     private int lineCount;
     private final Set<LivenessPredicate> livenessPredicates;
+    private Map<Node, Block> blocks = new HashMap<>();
+    Stack<Node> visitingOrder = new Stack<>();
+
 
     public LivenessAnalyzer(IrGraph graph, Map<Node, Register> registers) {
         this.irGraph = graph;
@@ -148,15 +151,17 @@ public class LivenessAnalyzer {
     private void fillLivenessInformation() {
         Set<Node> visited = new HashSet<>();
         scan(irGraph.endBlock(), visited);
+        System.out.println("Swag");
     }
 
     private void scan(Node node, Set<Node> visited) {
-        Node block = node.block();
+        //For debugging
+        visitingOrder.push(node);
         // TODO: Is it right that size equals 1 ? What if > 1 ?
-        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
-            scan(node.block().predecessor(0), visited);
+        if (node instanceof JumpNode && getNodeBlock(node).predecessors().size() == 1 && visited.add(getNodeBlock(node).predecessor(0))) {
+            scan(getNodeBlock(node).predecessor(0), visited);
         }
-        if (!(node instanceof Phi || (node instanceof Block && node != irGraph.endBlock()))) {
+        if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (!visited.contains(predecessor)) {
                     if (countAsVisited(node)) visited.add(predecessor);
@@ -165,11 +170,11 @@ public class LivenessAnalyzer {
                     visited.add(predecessor);
                 }
             }
-            if (!visited.contains(node.block())) {
-                if (countAsVisited(node)) visited.add(node.block());
-                scan(node.block(), visited);
+            if (!visited.contains(getNodeBlock(node))) {
+                if (countAsVisited(node)) visited.add(getNodeBlock(node));
+                scan(getNodeBlock(node), visited);
                 // Even if it's a proj node, after the proj node is finished being visited all predecessors HAVE to be marked as visited
-                visited.add(node.block());
+                visited.add(getNodeBlock(node));
             }
         }
 //
@@ -243,9 +248,16 @@ public class LivenessAnalyzer {
                 List<Register> params = new ArrayList<>();
                 //TODO: Maybe traverse block predecessors only if the phi has no other predecessors to solve case with mutliple phis in single block??
 
-                for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    Node blockPred = p.block().predecessor(i);
+                for (int i = 0; i < getNodeBlock(p).predecessors().size(); i++) {
+                    Node pred = p.predecessors().get(i);
+                    Node blockPred = getNodeBlock(p).predecessor(i);
+
+                    blocks.put(pred, getNodeBlock(blockPred));
+
                     scan(blockPred, visited);
+                    if (visited.add(pred)) {
+                        scan(pred, visited);
+                    }
                     params.add(registers.get(p.predecessors().get(i)));
                 }
 
@@ -280,6 +292,13 @@ public class LivenessAnalyzer {
         for (LivenessLine line : livenessLines) {
             System.out.println(line);
         }
+    }
+
+    // Change Node Block
+    private Block getNodeBlock(Node node) {
+        if (blocks.containsKey(node)) return blocks.get(node);
+
+        return node.block();
     }
 
     private static boolean countAsVisited(Node node) {

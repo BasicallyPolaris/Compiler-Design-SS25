@@ -13,6 +13,9 @@ import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipPr
 
 public class CodeGenerator {
     int labelCounter = 0;
+    private Map<Node, Block> blocks = new HashMap<>();
+    //For debugging
+    Stack<Node> visitingOrder = new Stack<>();
 
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
@@ -64,16 +67,16 @@ public class CodeGenerator {
                                   int spilledRegisterCount) {
         Set<Node> visited = new HashSet<>();
         scan(graph.endBlock(), visited, builder, registers, spilledRegisterCount, graph);
+        System.out.println("Swag");
     }
 
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers,
                       int spilledRegisterCount, IrGraph graph) {
-        Node block = node.block();
-        // TODO: Is it right that size equals 1 ? What if > 1 ?
-        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
-            scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
+        visitingOrder.push(node);
+        if (node instanceof JumpNode && getNodeBlock(node).predecessors().size() == 1 && visited.add(getNodeBlock(node).predecessor(0))) {
+            scan(getNodeBlock(node).predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
-        if (!(node instanceof Phi || (node instanceof Block && node != graph.endBlock()))) {
+        if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (!visited.contains(predecessor)) {
                     if (countAsVisited(node)) visited.add(predecessor);
@@ -82,27 +85,13 @@ public class CodeGenerator {
                     visited.add(predecessor);
                 }
             }
-            if (!visited.contains(node.block())) {
-                if (countAsVisited(node)) visited.add(node.block());
-                scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
+            if (!visited.contains(getNodeBlock(node))) {
+                if (countAsVisited(node)) visited.add(getNodeBlock(node));
+                scan(getNodeBlock(node), visited, builder, registers, spilledRegisterCount, graph);
                 // Even if it's a proj node, after the proj node is finished being visited all predecessors HAVE to be marked as visited
-                visited.add(node.block());
+                visited.add(getNodeBlock(node));
             }
         }
-
-        // We need labels for blocks, but not for start or end blocks
-        // if (node instanceof Block & !(node == graph.endBlock() || node ==
-        // graph.startBlock())) {
-        // //Create label with blockname
-        // builder.append(((Block) node).blockName() + ":");
-        // builder.append("\n");
-        // for (Node blockPredecessor : node.predecessors()) {
-        // if (visited.add(blockPredecessor)) {
-        // scan(blockPredecessor, visited, builder, registers, spilledRegisterCount,
-        // graph);
-        // }
-        // }
-        // }
 
         switch (node) {
             case AddNode add -> binary(builder, registers, add);
@@ -157,9 +146,16 @@ public class CodeGenerator {
                                         .projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT);
 
                 if (!onlySideEffects) {
-                    for (int i = 0; i < p.block().predecessors().size(); i++) {
-                        Node blockPred = p.block().predecessor(i);
+                    for (int i = 0; i < getNodeBlock(p).predecessors().size(); i++) {
+                        Node pred = p.predecessors().get(i);
+                        Node blockPred = getNodeBlock(p).predecessor(i);
+
+                        blocks.put(pred, getNodeBlock(blockPred));
+
                         scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
+                        if (visited.add(pred)) {
+                            scan(pred, visited, builder, registers, spilledRegisterCount, graph);
+                        }
                     }
                 }
             }
@@ -464,6 +460,12 @@ public class CodeGenerator {
                 .append(target)
                 .append("\n");
         builder.append(falseLabel).append(":");
+    }
+
+    private Block getNodeBlock(Node node) {
+        if (blocks.containsKey(node)) return blocks.get(node);
+
+        return node.block();
     }
 
     // Only truly mark as visited if not visited by a proj node
