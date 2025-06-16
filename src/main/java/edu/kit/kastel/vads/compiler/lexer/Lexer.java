@@ -52,9 +52,9 @@ public class Lexer {
             case '&' ->
                     singleOrDuplicateOperator(OperatorType.BIT_AND, OperatorType.ASSIGN_BIT_AND, OperatorType.LOG_AND);
             case '<' ->
-                    lessOrMoreShift(OperatorType.LESS, OperatorType.BIT_SHIFT_LEFT, OperatorType.ASSIGN_BIT_SHIFT_LEFT);
+                    lessOrMoreShift(OperatorType.LESS, OperatorType.BIT_SHIFT_LEFT, OperatorType.LESS_EQUAL, OperatorType.ASSIGN_BIT_SHIFT_LEFT);
             case '>' ->
-                    lessOrMoreShift(OperatorType.MORE, OperatorType.BIT_SHIFT_RIGHT, OperatorType.ASSIGN_BIT_SHIFT_RIGHT);
+                    lessOrMoreShift(OperatorType.MORE, OperatorType.BIT_SHIFT_RIGHT, OperatorType.MORE_EQUAL, OperatorType.ASSIGN_BIT_SHIFT_RIGHT);
             default -> {
                 if (isBoolean()) {
                     yield lexBool();
@@ -231,13 +231,15 @@ public class Lexer {
         return new Operator(single, buildSpan(1));
     }
 
-    private Token lessOrMoreShift(OperatorType single, OperatorType tuple, OperatorType triple) {
+    private Token lessOrMoreShift(OperatorType single, OperatorType tuple, OperatorType equalTuple, OperatorType triple) {
         char singleOperator = single.toString().charAt(0);
 
         if (hasMore(2) && peek(1) == singleOperator && peek(2) == '=') {
             return new Operator(triple, buildSpan(3));
         } else if (hasMore(1) && peek(1) == singleOperator) {
             return new Operator(tuple, buildSpan(2));
+        } else if (hasMore(1) && peek(1) == '=') {
+            return new Operator(equalTuple, buildSpan(2));
         }
         return new Operator(single, buildSpan(1));
     }
