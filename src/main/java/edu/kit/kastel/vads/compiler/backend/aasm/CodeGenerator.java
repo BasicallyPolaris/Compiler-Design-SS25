@@ -78,11 +78,15 @@ public class CodeGenerator {
                 if (!visited.contains(predecessor)) {
                     if (countAsVisited(node)) visited.add(predecessor);
                     scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
+                    // Even if it's a proj node, after the proj node is finished being visited all predecessors HAVE to be marked as visited
+                    visited.add(predecessor);
                 }
             }
             if (!visited.contains(node.block())) {
                 if (countAsVisited(node)) visited.add(node.block());
                 scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
+                // Even if it's a proj node, after the proj node is finished being visited all predecessors HAVE to be marked as visited
+                visited.add(node.block());
             }
         }
 
