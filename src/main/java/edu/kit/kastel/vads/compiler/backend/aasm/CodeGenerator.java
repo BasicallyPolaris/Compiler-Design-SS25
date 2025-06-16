@@ -13,7 +13,6 @@ import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipPr
 public class CodeGenerator {
     int labelCounter = 0;
     Stack<Node> visitedStack = new Stack<>();
-    int spilledRegisterCount = 0;
 
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
@@ -24,7 +23,10 @@ public class CodeGenerator {
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
             analyzer.calculateLiveness();
             PhysicalRegisterAllocator pAllocator = new PhysicalRegisterAllocator(analyzer.livenessLines);
+            */
+            PhysicalRegisterAllocatorNoLive pAllocator = new PhysicalRegisterAllocatorNoLive(registers);
             Map<Register, PhysicalRegister> physicalRegisters = pAllocator.allocate();
+
             Map<Node, PhysicalRegister> physicalRegisterMap = new HashMap<>();
             AtomicInteger spilledRegisters = new AtomicInteger();
             registers.forEach((node, register) -> {
@@ -35,7 +37,7 @@ public class CodeGenerator {
                 }
             });
 
-            spilledRegisterCount = spilledRegisters.get();
+            int spilledRegisterCount = spilledRegisters.get();
 
             builder.append(".global main\n")
                     .append(".global _main\n")
@@ -68,8 +70,7 @@ public class CodeGenerator {
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers,
                       int spilledRegisterCount, IrGraph graph) {
         // TODO: When is the right point of time to visit the blocks?
-        if (node instanceof JumpNode && !node.block().predecessors().isEmpty()
-                && visited.add(node.block().predecessor(0))) {
+        if (node instanceof JumpNode && node.block().predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
         if (!(node instanceof Phi || (node instanceof Block && node != graph.endBlock()))) {
@@ -77,12 +78,10 @@ public class CodeGenerator {
                 if (visited.add(predecessor)) {
                     visitedStack.add(predecessor);
                     scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
-
                 }
             }
-            if (visited.add(node)) {
+            if (visited.add(node.block())) {
                 scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
-
             }
         }
 
@@ -119,16 +118,12 @@ public class CodeGenerator {
             case BitOrNode or -> binary(builder, registers, or);
             case LShiftNode lShift -> binary(builder, registers, lShift);
             case RShiftNode rShift -> binary(builder, registers, rShift);
-            case ReturnNode r -> {
-                builder
-                        .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)))
-                        .append(", %eax\n")
-                        .append("  addq $").append(spilledRegisterCount * 4).append(", %rsp\n");
-                if (spilledRegisterCount > 0) {
-                    builder.append("  pop %rbp\n");
-                }
-                builder.append("  ret");
-            }
+            case ReturnNode r -> builder
+                    .append("  movl ").append(registers.get(predecessorSkipProj(r, ReturnNode.RESULT)))
+                    .append(", %eax\n")
+                    .append("  addq $").append(spilledRegisterCount * 4).append(", %rsp\n")
+                    .append("  pop %rbp\n")
+                    .append("  ret");
             case ConstIntNode c -> builder.repeat(" ", 2)
                     .append("movl $")
                     .append(c.value())
@@ -164,8 +159,7 @@ public class CodeGenerator {
                         graph.removeSuccessor(pred, p);
                         pred.setBlock(blockPred.block());
                         blockPred.addPredecessor(pred);
-                        // TODO: Determine whether this is needed
-                        visited.add(blockPred);
+
                         scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
                     }
                 }

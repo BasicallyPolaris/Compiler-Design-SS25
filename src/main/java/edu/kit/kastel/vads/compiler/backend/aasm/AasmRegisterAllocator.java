@@ -27,9 +27,6 @@ public class AasmRegisterAllocator implements RegisterAllocator {
     }
 
     private void scan(Node node, Set<Node> visited, boolean shouldAddRegister) {
-        if (node instanceof JumpNode && !node.block().predecessors().isEmpty() && visited.add(node.block().predecessor(0))) {
-            scan(node.block().predecessor(0), visited);
-        }
         if (!(node instanceof Phi)) {
             for (Node predecessor : node.predecessors()) {
                 if (visited.add(predecessor)) {
@@ -56,41 +53,26 @@ public class AasmRegisterAllocator implements RegisterAllocator {
                 .predecessors()
                 .stream()
                 .allMatch(
-                        pred -> pred instanceof ProjNode
-                                && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT);
+                        pred -> pred instanceof ProjNode && ((ProjNode) pred).projectionInfo() == ProjNode.SimpleProjectionInfo.SIDE_EFFECT
+                );
 
-        if (onlySideEffects)
-            return;
+        if (onlySideEffects) return;
 
         VirtualRegister phiRegister = new VirtualRegister(this.id++);
-
-        // Restructure the Phi node: move predecessors to block predecessors
+        // TODO: Is the order right?
         for (int i = 0; i < node.predecessors().size(); i++) {
+            scan(node.block().predecessor(i), visited);
             Node pred = node.predecessors().get(i);
-            Node blockPred = node.block().predecessor(i);
-
-            // Remove the connection from pred to phi
-            // irGraph.removeSuccessor(pred, node);
-            // Set the pred's block to the block predecessor's block
-            pred.setBlock(blockPred.block());
-            // Add pred as predecessor to block predecessor
-            blockPred.addPredecessor(pred);
-
             scan(pred, visited, false);
-            scan(blockPred, visited);
 
             if (needsRegister(pred) && shouldAddRegister) {
                 this.registers.put(pred, phiRegister);
-            }
-            if (needsRegister(blockPred) && shouldAddRegister) {
-                this.registers.put(blockPred, new VirtualRegister(this.id++));
             }
         }
         this.registers.put(node, phiRegister);
     }
 
     private static boolean needsRegister(Node node) {
-        return !(node instanceof ProjNode || node instanceof StartNode || node instanceof Block
-                || node instanceof ReturnNode || node instanceof JumpNode || node instanceof CondJumpNode);
+        return !(node instanceof ProjNode || node instanceof StartNode || node instanceof Block || node instanceof ReturnNode || node instanceof JumpNode || node instanceof CondJumpNode);
     }
 }
