@@ -20,6 +20,7 @@ public class CodeGenerator {
             // System.out.println(YCompPrinter.print(graph));
             AasmRegisterAllocator allocator = new AasmRegisterAllocator();
             Map<Node, Register> registers = allocator.allocateRegisters(graph);
+            /*
             LivenessAnalyzer analyzer = new LivenessAnalyzer(graph, registers);
             analyzer.calculateLiveness();
             PhysicalRegisterAllocator pAllocator = new PhysicalRegisterAllocator(analyzer.livenessLines);
