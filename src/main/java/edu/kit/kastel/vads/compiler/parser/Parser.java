@@ -320,7 +320,8 @@ public class Parser {
             }
             case Operator(var type, _) when type == OperatorType.LOG_NOT -> {
                 Span span = this.tokenSource.consume().span();
-                yield new CondExprTree(parseFactor(), new BoolLiteralTree("false", span), new BoolLiteralTree("true", span));            }
+                yield new CondExprTree(parseFactor(), new BoolLiteralTree("false", span), new BoolLiteralTree("true", span));
+            }
             case Operator(var type, _) when type == OperatorType.BIT_NOT -> {
                 Span span = this.tokenSource.consume().span();
                 yield new BitNotTree(parseFactor(), span);
