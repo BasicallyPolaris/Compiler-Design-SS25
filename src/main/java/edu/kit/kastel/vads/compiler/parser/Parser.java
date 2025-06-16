@@ -181,8 +181,8 @@ public class Parser {
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
                     && (type == OperatorType.LOG_OR)) {
-                this.tokenSource.consume();
-                lhs = new CondExprTree(lhs, new BoolLiteralTree("true", lhs.span()), parseExpressionLogAnd());
+                Span span = this.tokenSource.consume().span();
+                lhs = new CondExprTree(lhs, new BoolLiteralTree("true", span), parseExpressionLogAnd());
             } else {
                 return lhs;
             }
@@ -194,8 +194,8 @@ public class Parser {
         while (true) {
             if (this.tokenSource.peek() instanceof Operator(var type, _)
                     && (type == OperatorType.LOG_AND)) {
-                this.tokenSource.consume();
-                lhs = new CondExprTree(lhs, parseExpressionBitOr(), new BoolLiteralTree("false", lhs.span()));
+                Span span = this.tokenSource.consume().span();
+                lhs = new CondExprTree(lhs, parseExpressionBitOr(), new BoolLiteralTree("false", span));
             } else {
                 return lhs;
             }
@@ -320,7 +320,7 @@ public class Parser {
             }
             case Operator(var type, _) when type == OperatorType.LOG_NOT -> {
                 Span span = this.tokenSource.consume().span();
-                yield new CondExprTree(parseExpression(), new BoolLiteralTree("false", span), new BoolLiteralTree("true", span));
+                yield new CondExprTree(parseFactor(), new BoolLiteralTree("false", span), new BoolLiteralTree("true", span));
             }
             case Operator(var type, _) when type == OperatorType.BIT_NOT -> {
                 Span span = this.tokenSource.consume().span();

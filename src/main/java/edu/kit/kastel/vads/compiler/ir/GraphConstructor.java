@@ -186,6 +186,11 @@ class GraphConstructor {
             return;
         }
 
+        //Process block predecessors
+        for (Node blockpred: node.block().predecessors()) {
+            cleanupTrivialPhisRecursive(blockpred, visited);
+        }
+
         // Process predecessors first (post-order traversal)
         for (Node pred : node.predecessors()) {
             cleanupTrivialPhisRecursive(pred, visited);
