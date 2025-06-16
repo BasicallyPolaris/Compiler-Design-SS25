@@ -18,11 +18,11 @@ public class TypeAnalysis implements NoOpVisitor<List<ReturnTree>> {
 
     @Override
     public Unit visit(FunctionTree node, List<ReturnTree> data) {
-//        for (ReturnTree returnTree : data) {
-//            if (returnTree.expression().getType() != node.returnType().type()) {
-//                throw new SemanticException("Type mismatch: " + returnTree.expression().getType() + " does not match expected type: " + node.returnType().type());
-//            }
-//        }
+        for (ReturnTree returnTree : data) {
+            if (returnTree.expression().getType() != BasicType.INT) {
+                throw new SemanticException("Type mismatch: " + returnTree.expression().getType() + " does not match expected type: " + BasicType.INT);
+            }
+        }
         return NoOpVisitor.super.visit(node,data);
     }
 
