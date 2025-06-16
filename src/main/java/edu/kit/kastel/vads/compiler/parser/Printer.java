@@ -138,11 +138,13 @@ public class Printer {
                 lineBreak();
             }
             case CondExprTree(var cond, var exp1, var exp2) -> {
+                print("(");
                 printTree(cond);
                 print(" ? ");
                 printTree(exp1);
                 print(" : ");
                 printTree(exp2);
+                print(")");
             }
             case BitNotTree(var expression, _) -> {
                 print("~(");

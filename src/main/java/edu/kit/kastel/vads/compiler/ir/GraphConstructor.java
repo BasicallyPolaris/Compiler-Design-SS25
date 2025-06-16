@@ -241,10 +241,24 @@ class GraphConstructor {
         return tryRemoveTrivialPhi(phi);
     }
 
+    boolean isEqualNode(Node a, Node b) {
+        if (a == b) return true;
+
+        if (a instanceof ConstBoolNode && b instanceof ConstBoolNode) {
+            return ((ConstBoolNode) a).value() == ((ConstBoolNode) b).value();
+        }
+
+        if (b instanceof ConstIntNode && a instanceof ConstIntNode) {
+            return ((ConstIntNode) a).value() == ((ConstIntNode) b).value();
+        }
+
+        return false;
+    }
+
     Node tryRemoveTrivialPhi(Phi phi) {
         Node same = null;
         for (Node op : phi.predecessors()) {
-            if (op == same || op == phi) {
+            if (isEqualNode(op, same) || op == phi) {
                 continue; // unique value or self-reference
             }
             if (same != null) {

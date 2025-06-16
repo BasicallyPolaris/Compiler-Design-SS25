@@ -78,6 +78,26 @@ public class Main {
         }
 
         String assemblyCode = new CodeGenerator().generateCode(graphs);
+
+        // Second vgc print after transforming phi predecessors
+        String yCompOutputPathAfter = "./test-code/run-output-after.vcg";
+        try (FileWriter fileWriter = new FileWriter(yCompOutputPathAfter);
+             PrintWriter printWriter = new PrintWriter(fileWriter)) {
+
+            // Get the first graph from the list
+            if (!graphs.isEmpty()) {
+                // Print the output of YCompPrinter.print(graphs.getFirst()) to the file
+                printWriter.println(YCompPrinter.print(graphs.getFirst()));
+            } else {
+                System.out.println("No graphs available to print.");
+            }
+
+        } catch (IOException e) {
+            System.err.println("An error occurred while writing to the file: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+
         Path assemblyFile = Path.of(output + ".s");
 
         // Write assembly code to the .s file
