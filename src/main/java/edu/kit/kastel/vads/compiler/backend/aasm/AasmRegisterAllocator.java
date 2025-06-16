@@ -13,41 +13,62 @@ import java.util.Set;
 public class AasmRegisterAllocator implements RegisterAllocator {
     private int id;
     private final Map<Node, Register> registers = new HashMap<>();
+    private Node endBlock;
 
     @Override
     public Map<Node, Register> allocateRegisters(IrGraph graph) {
         Set<Node> visited = new HashSet<>();
         visited.add(graph.endBlock());
+        this.endBlock = graph.endBlock();
         scan(graph.endBlock(), visited);
         return Map.copyOf(this.registers);
     }
 
     private void scan(Node node, Set<Node> visited) {
-        scan(node, visited, true);
-    }
-
-    private void scan(Node node, Set<Node> visited, boolean shouldAddRegister) {
-        if (!(node instanceof Phi)) {
+        Node block = node.block();
+        // TODO: Is it right that size equals 1 ? What if > 1 ?
+        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
+            scan(node.block().predecessor(0), visited);
+        }
+        if (!(node instanceof Phi || (node instanceof Block && node != endBlock))) {
             for (Node predecessor : node.predecessors()) {
-                if (visited.add(predecessor)) {
+                if (!visited.contains(predecessor)) {
+                    if (countAsVisited(node)) visited.add(predecessor);
                     scan(predecessor, visited);
                 }
             }
-
-            if (needsRegister(node) && shouldAddRegister) {
+            if (!visited.contains(node.block())) {
+                if (countAsVisited(node)) visited.add(node.block());
+                scan(node.block(), visited);
+            }
+            if (needsRegister(node)) {
                 this.registers.put(node, new VirtualRegister(this.id++));
             }
-
-            if (node instanceof JumpNode) {
-                if (node.predecessors().isEmpty()) {
-                    for (Node pred : node.block().predecessors()) {
-                        scan(pred, visited);
-                    }
-                }
-            }
-
-            return;
         }
+
+        if (!(node instanceof Phi)) return;
+
+//        if (!(node instanceof Phi)) {
+//            for (Node predecessor : node.predecessors()) {
+//                if (visited.add(predecessor)) {
+//                    scan(predecessor, visited);
+//                }
+//            }
+//
+//            if (needsRegister(node) && shouldAddRegister) {
+//                this.registers.put(node, new VirtualRegister(this.id++));
+//            }
+//
+//            if (node instanceof JumpNode) {
+//                if (node.predecessors().isEmpty()) {
+//                    for (Node pred : node.block().predecessors()) {
+//                        scan(pred, visited);
+//                    }
+//                }
+//            }
+//
+//            return;
+//        }
 
         boolean onlySideEffects = node
                 .predecessors()
@@ -59,13 +80,18 @@ public class AasmRegisterAllocator implements RegisterAllocator {
         if (onlySideEffects) return;
 
         VirtualRegister phiRegister = new VirtualRegister(this.id++);
-        // TODO: Is the order right?
-        for (int i = 0; i < node.predecessors().size(); i++) {
-            scan(node.block().predecessor(i), visited);
-            Node pred = node.predecessors().get(i);
-            scan(pred, visited, false);
 
-            if (needsRegister(pred) && shouldAddRegister) {
+        // TODO: Is the order right?
+        for (int i = 0; i < node.block().predecessors().size(); i++) {
+            Node pred = node.predecessors().get(i);
+            Node blockPred = node.block().predecessor(i);
+
+            pred.setBlock(blockPred.block());
+            blockPred.addPredecessor(pred);
+
+            scan(blockPred, visited);
+
+            if (needsRegister(pred)) {
                 this.registers.put(pred, phiRegister);
             }
         }
@@ -74,5 +100,9 @@ public class AasmRegisterAllocator implements RegisterAllocator {
 
     private static boolean needsRegister(Node node) {
         return !(node instanceof ProjNode || node instanceof StartNode || node instanceof Block || node instanceof ReturnNode || node instanceof JumpNode || node instanceof CondJumpNode);
+    }
+
+    private static boolean countAsVisited(Node node) {
+        return !(node instanceof ProjNode);
     }
 }

@@ -4,6 +4,7 @@ import edu.kit.kastel.vads.compiler.backend.regalloc.*;
 import edu.kit.kastel.vads.compiler.backend.regalloc.liveness.LivenessAnalyzer;
 import edu.kit.kastel.vads.compiler.ir.IrGraph;
 import edu.kit.kastel.vads.compiler.ir.node.*;
+import org.jgrapht.alg.util.Triple;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,7 +13,6 @@ import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipPr
 
 public class CodeGenerator {
     int labelCounter = 0;
-    Stack<Node> visitedStack = new Stack<>();
 
     public String generateCode(List<IrGraph> program) {
         StringBuilder builder = new StringBuilder();
@@ -68,18 +68,20 @@ public class CodeGenerator {
 
     private void scan(Node node, Set<Node> visited, StringBuilder builder, Map<Node, PhysicalRegister> registers,
                       int spilledRegisterCount, IrGraph graph) {
-        // TODO: When is the right point of time to visit the blocks?
-        if (node instanceof JumpNode && node.block().predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
+        Node block = node.block();
+        // TODO: Is it right that size equals 1 ? What if > 1 ?
+        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
             scan(node.block().predecessor(0), visited, builder, registers, spilledRegisterCount, graph);
         }
         if (!(node instanceof Phi || (node instanceof Block && node != graph.endBlock()))) {
             for (Node predecessor : node.predecessors()) {
-                if (visited.add(predecessor)) {
-                    visitedStack.add(predecessor);
+                if (!visited.contains(predecessor)) {
+                    if (countAsVisited(node)) visited.add(predecessor);
                     scan(predecessor, visited, builder, registers, spilledRegisterCount, graph);
                 }
             }
-            if (visited.add(node.block())) {
+            if (!visited.contains(node.block())) {
+                if (countAsVisited(node)) visited.add(node.block());
                 scan(node.block(), visited, builder, registers, spilledRegisterCount, graph);
             }
         }
@@ -152,13 +154,7 @@ public class CodeGenerator {
 
                 if (!onlySideEffects) {
                     for (int i = 0; i < p.block().predecessors().size(); i++) {
-                        Node pred = p.predecessor(i);
                         Node blockPred = p.block().predecessor(i);
-
-                        graph.removeSuccessor(pred, p);
-                        pred.setBlock(blockPred.block());
-                        blockPred.addPredecessor(pred);
-
                         scan(blockPred, visited, builder, registers, spilledRegisterCount, graph);
                     }
                 }
@@ -169,10 +165,10 @@ public class CodeGenerator {
             }
             case CondExprNode _ ->
                     throw new UnsupportedOperationException("No CondExprNodes should be in CodeGen step");
-            case Block block -> {
+            case Block b -> {
                 if (!(node == graph.endBlock() || node == graph.startBlock())) {
                     // Create label with blockname
-                    builder.append(block.blockName()).append(":");
+                    builder.append(b.blockName()).append(":");
                     builder.append("\n");
                 }
             }
@@ -233,25 +229,21 @@ public class CodeGenerator {
             secondParameter = spillRegSource;
         }
 
-        // Move spilled Register in R15 (not neccessary for binops) and use R15 as
-        // target for binops
+        // Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
         if (spillTarget) {
-            // builder.repeat(" ", 2).append("movl ")
-            // .append(target)
-            // .append(", ")
-            // .append(spillRegDest)
-            // .append("\n");
             target = spillRegDest;
         }
 
         // Move first parameter into target register for binop
-        // if (!firstParameter.equals(target)) {
-        // builder.repeat(" ", 2).append("movl ")
-        // .append(firstParameter)
-        // .append(", ")
-        // .append(target)
-        // .append("\n");
-        // }
+        if (!firstParameter.equals(target)) {
+            builder.repeat(" ", 2).append("movl ")
+                    .append(firstParameter)
+                    .append(", ")
+                    .append(target)
+                    .append("\n");
+        }
+        // End of Register Spilling and Operand Preperations
+
         switch (node) {
             case LessNode _ -> {
                 writeCompareAssembly("jl ", builder, firstParameter, secondParameter, target);
@@ -278,7 +270,8 @@ public class CodeGenerator {
         if (spillTarget) {
             PhysicalRegister targetOnStack = registers.get(node);
             if (!spillRegDest.equals(targetOnStack)) {
-                builder.append("\n").repeat(" ", 2).append("movl ")
+                builder.append("\n")
+                        .repeat(" ", 2).append("movl ")
                         .append(spillRegDest)
                         .append(", ")
                         .append(targetOnStack);
@@ -312,14 +305,8 @@ public class CodeGenerator {
             secondParameter = spillRegSource;
         }
 
-        // Move spilled Register in R15 (not neccessary for binops) and use R15 as
-        // target for binops
+        // Move spilled Register in R15 (not neccessary for binops) and use R15 as target for binops
         if (spillTarget) {
-            // builder.repeat(" ", 2).append("movl ")
-            // .append(target)
-            // .append(", ")
-            // .append(spillRegDest)
-            // .append("\n");
             target = spillRegDest;
         }
 
@@ -331,6 +318,7 @@ public class CodeGenerator {
                     .append(target)
                     .append("\n");
         }
+        // End of Register Spilling and Operand Preperations
 
         switch (node) {
             case AddNode _ -> builder.repeat(" ", 2).append("addl ")
@@ -472,5 +460,10 @@ public class CodeGenerator {
                 .append(target)
                 .append("\n");
         builder.append(falseLabel).append(":");
+    }
+
+    // Only truly mark as visited if not visited by a proj node
+    private static boolean countAsVisited(Node node) {
+        return !(node instanceof ProjNode);
     }
 }

@@ -6,7 +6,6 @@ import edu.kit.kastel.vads.compiler.ir.node.*;
 
 import java.util.*;
 
-import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipJump;
 import static edu.kit.kastel.vads.compiler.ir.util.NodeSupport.predecessorSkipProj;
 
 public class LivenessAnalyzer {
@@ -152,20 +151,38 @@ public class LivenessAnalyzer {
     }
 
     private void scan(Node node, Set<Node> visited) {
-        if (!(node instanceof Phi)) {
+        Node block = node.block();
+        // TODO: Is it right that size equals 1 ? What if > 1 ?
+        if (node instanceof JumpNode && block.predecessors().size() == 1 && visited.add(node.block().predecessor(0))) {
+            scan(node.block().predecessor(0), visited);
+        }
+        if (!(node instanceof Phi || (node instanceof Block && node != irGraph.endBlock()))) {
             for (Node predecessor : node.predecessors()) {
-                if (visited.add(predecessor)) {
+                if (!visited.contains(predecessor)) {
+                    if (countAsVisited(node)) visited.add(predecessor);
                     scan(predecessor, visited);
                 }
             }
-        }
-        if (node instanceof JumpNode) {
-            if (node.predecessors().isEmpty()) {
-                for (Node pred : node.block().predecessors()) {
-                    scan(pred, visited);
-                }
+            if (!visited.contains(node.block())) {
+                if (countAsVisited(node)) visited.add(node.block());
+                scan(node.block(), visited);
             }
         }
+//
+//        if (!(node instanceof Phi)) {
+//            for (Node predecessor : node.predecessors()) {
+//                if (visited.add(predecessor)) {
+//                    scan(predecessor, visited);
+//                }
+//            }
+//        }
+//        if (node instanceof JumpNode) {
+//            if (node.predecessors().isEmpty()) {
+//                for (Node pred : node.block().predecessors()) {
+//                    scan(pred, visited);
+//                }
+//            }
+//        }
 
         switch (node) {
             case BinaryOperationNode b -> {
@@ -223,9 +240,8 @@ public class LivenessAnalyzer {
                 //TODO: Maybe traverse block predecessors only if the phi has no other predecessors to solve case with mutliple phis in single block??
 
                 for (int i = 0; i < p.block().predecessors().size(); i++) {
-                    scan(p.block().predecessors().get(i), visited);
-                    // Do we have to set the predecessors block ?
-                    scan(p.predecessors().get(i), visited);
+                    Node blockPred = p.block().predecessor(i);
+                    scan(blockPred, visited);
                     params.add(registers.get(p.predecessors().get(i)));
                 }
 
@@ -260,5 +276,9 @@ public class LivenessAnalyzer {
         for (LivenessLine line : livenessLines) {
             System.out.println(line);
         }
+    }
+
+    private static boolean countAsVisited(Node node) {
+        return !(node instanceof ProjNode);
     }
 }
